@@ -36,14 +36,6 @@ int shutter(int mode);
 int end();
 
 int main(int argc, char* argv[]){
-  // Select mentioned camera
-  // If no camera is mentioned, first camera is selected
-  // CHECK PREVIOUS FACT!!!
-  // if (CameraSelect (argc, argv) < 0) {
-  //     cout << "*** CAMERA SELECTION ERROR ***" << endl;
-  //     return -1;
-  // }
-
   // create Socket
   int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (listener < 0){
@@ -53,9 +45,6 @@ int main(int argc, char* argv[]){
 
   // camera variables
   unsigned long status;   // status of the last function
-  // int xpix, ypix;        // size of the camera
-  // int temperature;
-  // float exp_time = 0.1;  // exposure time in seconds
   char *command;
 
   // socket variables
@@ -140,7 +129,8 @@ int CameraSelect (int iNumArgs, char* szArgList[]){
 
 int temp(int T){
   printf("%d\n", T);
-  fputs("hohoho\n", stdout);
+  SetTemperature(T);
+  CoolerON();
   return 0;
 }
 
@@ -151,6 +141,7 @@ int info(){
 
 int image(float exp_time){
   fitsfile *file;
+  int fits_status = 0;
   int status = 0;
   long firstpix[2] = {1, 1};
   int height, width;
@@ -164,22 +155,22 @@ int image(float exp_time){
   StartAcquisition();
 
   img = (int *) malloc(height * width * sizeof(int));
-  fits_create_file(&file, "\!test.fits", &status);
-  fits_create_img(file, LONG_IMG, 2, naxis, &status);
+  fits_create_file(&file, "\!test.fits", &fits_status);
+  fits_create_img(file, LONG_IMG, 2, naxis, &fits_status);
 
   //Loop until acquisition finished
   GetStatus(&status);
   while(status==DRV_ACQUIRING) GetStatus(&status);
-
+  puts("Image OK");
   GetAcquiredData(img, width*height);
-
-  fits_write_pix(file, TINT, firstpix, width*height, img, &status);
-
-  fits_close_file(file, &status);
+  puts("Image is in array");
+  fits_write_pix(file, TINT, firstpix, width*height, img, &fits_status);
+  puts("Image is in fits");
+  fits_close_file(file, &fits_status);
 
   free(img);
 
-  puts("image");
+  printf("%d\n", fits_status);
   return 0;
 }
 
