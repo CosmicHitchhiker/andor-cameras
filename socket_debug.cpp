@@ -75,14 +75,14 @@ int main(int argc, char* argv[]){
 	listen(listener, 1);
   puts("Listening...\n");
 
-  // status = Initialize("/usr/local/etc/andor");
-	// if(status!=DRV_SUCCESS){
-	// 	cout << "Initialisation error...exiting" << endl;
-	// 	return(1);
-	// }
-  // sleep(2);   // wait for the end of the initialization
-  //
-  // SetReadMode(4);   // set mode to "Image"
+  status = Initialize("/usr/local/etc/andor");
+	if(status!=DRV_SUCCESS){
+		cout << "Initialisation error...exiting" << endl;
+		return(1);
+	}
+  sleep(2);   // wait for the end of the initialization
+
+  SetReadMode(4);   // set mode to "Image"
   //
   // GetDetector(&width, &height);   // get Detector shapes
   SetShutter(1,0,50,50);
@@ -111,12 +111,9 @@ int main(int argc, char* argv[]){
 
 
   } while(1);
+  close(sock);
 
-
-
-
-
-
+	close(listener);
 
 	return 0;
 }
@@ -192,7 +189,7 @@ int series(){
 }
 
 int shutter(int mode){
-  i
+  return 0;
 }
 
 int end(){
