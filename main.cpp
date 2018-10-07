@@ -6,10 +6,7 @@
 
 int CameraSelect (int iNumArgs, char* szArgList[]);
 int temp(int T);
-int info();
 int image(float t, fitsfile* file, FILE** log);
-int series();
-int end();
 int save_fits(fitsfile* file);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
@@ -20,6 +17,11 @@ void GetMessage(int listener, char message[]);
 void CameraInit(FILE** log);
 void FitsInit(fitsfile** file);
 void mGetDetector(int *x, int *y);
+int AddHeaderKey(char* message, fitsfile* file, FILE** log);
+void UpdateHeader(fitsfile* file, char* file_name);
+void FileName(char* message);
+void Temperature(int T);
+
 
 
 
@@ -64,24 +66,19 @@ int Daemon(int argc, char* argv[]) {
 }
 
 int Main(int argc, char* argv[]){
-  FILE *log = NULL;
-  int fits_status = 0;
+  FILE *log = NULL;   // Log file
 
-  int listener = 0;
-  struct sockaddr_in addr;
-  int port_number = DEFAULT_PORT;
+  int listener = 0;   // Socket descriptor
+  struct sockaddr_in addr;  // Socket address
+  int port_number = DEFAULT_PORT;   // TCP port number
   if (argc > 1)
     port_number = atoi(argv[1]);
-  char client_message[1024] = {0};
-  char *command;
+  char client_message[1024] = {0};  // Buffer for client message
+  char *command;  // Buffer for command (separated from the message)
+  char message[1024] = {0};
 
-  // int cur_temp, tar_temp, max_temp, min_temp;
-  // int xpix, ypix;
-
-  time_t cur_time;
-  struct tm curr_time;
-
-  fitsfile *template_fits;
+  fitsfile *template_fits;  // File to store header data
+  int fits_status = 0;
 
   LogFileInit(&log);
 
@@ -93,18 +90,19 @@ int Main(int argc, char* argv[]){
   
   do{
     GetMessage(listener, client_message);
-    client_message = strtok(client_message, "\n");
     PrintInLog(&log, client_message);
+    strcpy(message, client_message);
     command = strtok(client_message, " \n\0");
     if (command == NULL) PrintInLog(&log, "Empty command");
     else if (strcmp(command,"image") == 0) fits_status = image(atof(strtok(NULL, " \n\0")), template_fits, &log);
-    else if (strcmp(command,"save") == 0) fits_status = save_fits(template_fits);
+    else if (strcmp(command,"header") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
   } while(strcmp(command,"exit") != 0);
 
-  cur_time = time(NULL);
+  time_t cur_time = time(NULL);
   fprintf(log, "\nLog ending %s\n", ctime(&cur_time));
   close(listener);
   fclose(log);
+  fits_close_file(template_fits, &fits_status);
   ShutDown();
 
   return (0);
@@ -128,12 +126,13 @@ void PrintInLog(FILE** log, char message[]){
   struct tm *curr_time = localtime(&cur_time);
   char buffer[20];
 
-  time(&cur_time);
-  curr_time = localtime(&cur_time);
+  // time(&cur_time);
+  // curr_time = localtime(&cur_time);
 
   strftime(buffer,20,"%T %h %d ",curr_time);
   fprintf(*log, "%s: ", buffer);
-  fprintf(*log, "%s\n", message);
+  char* msg = strtok(message, "\n");
+  fprintf(*log, "%s\n", msg);
   fflush(*log);
 }
 
@@ -199,7 +198,7 @@ void FitsInit(fitsfile** file){
   int status = 0;
   GetDetector(&width, &height);
   long naxis[2] = {width, height};
-  fits_create_file(file, "\!image.fits", &status);
+  fits_create_file(file, "\!header.fits", &status);
   fits_create_img(*file, LONG_IMG, 2, naxis, &status);
 }
 
@@ -223,40 +222,58 @@ int save_fits(fitsfile* file){
 int image(float t, fitsfile* file, FILE** log){
   int width, height;
   GetDetector(&width, &height);
-  long naxis[2] = {width, height};
-  SetImage(1,1,1,width,1,height);
-  StartAcquisition();
-  int imageData[height*width];
+  //long naxis[2] = {width, height};
+  SetImage(1,1,1,width,1,height); //horiz bin, vert bin, first xpix, last xpix, first ypix, last ypix
+  char* file_name;
+  FileName(file_name); 
 
+  StartAcquisition();
   int status;
-  int fits_status = 0;
+  //int fits_status = 0;
 
   //Loop until acquisition finished
   GetStatus(&status);
   while(status==DRV_ACQUIRING) GetStatus(&status);
   PrintInLog(log, "Image is acquired");
 
-  GetAcquiredData(imageData, width*height);
-  PrintInLog(log, "Image is written in the array");
-
-  imageData[1] = 0;
-
-  long firstpix[2] = {1, 1};
-  fits_movabs_hdu(file, 1, IMAGE_HDU, &fits_status);
-  fits_write_pix(file, TINT, firstpix, width*height, imageData, &fits_status);
-
-  //SaveAsFITS("./image3.fits", 2);
-  //fits_close_file(file, &fits_status);
+  SaveAsFITS(file_name, 2);
+  UpdateHeader(file, file_name);
   
   return 0;
 }
 
-// int series(){
-//   puts("hohoho");
-//   return 0;
-// }
+int AddHeaderKey(char* message, fitsfile* file, FILE** log){
+  message = strtok(message, "\n");
+  char* command = strtok(message, " \0\n");
+  char* key = strtok(NULL, " \0\n");
+  char* value = strtok(NULL, " \0\n");
+  char* comment = strtok(NULL, " \0\n");
+  int status = 0;
+  fits_update_key(file, TSTRING, key, value, comment, &status);
+  return 0;
+}
 
-// int end(){
-//   puts("hohoho");
-//   return 1;
-// }
+void FileName(char* message){
+  time_t cur_time = time(NULL);
+  struct tm *curr_time = gmtime(&cur_time);
+
+  strftime(message,50,"KGO%Y%m%d%H%M%S.fits",curr_time);
+}
+
+void UpdateHeader(fitsfile* file, char* file_name){
+  int status = 0;
+  int n = 0;
+  fitsfile* image;
+  char* card;
+  fits_open_data(&image, file_name, READWRITE, &status);
+  fits_get_hdrspace(file, &n, NULL, &status);
+  for (int i=0; i < n; i++){
+    fits_read_record(file, i+1, card, &status);
+    fits_write_record(image, card, &status);
+  }
+  fits_close_file(image, &status);
+}
+
+void Temperature(int T){
+  SetTemperature(T);
+}
