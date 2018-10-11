@@ -1,13 +1,13 @@
 // TODO: make an extension for empty commands
-
+// TODO: Make temperature in camera.info shorter
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 #include "main.h"
 
 #define DEFAULT_PORT 1234
 
 int CameraSelect (int iNumArgs, char* szArgList[]);
 int temp(int T);
-int image(float t, fitsfile* file, FILE** log);
-int save_fits(fitsfile* file);
+int Image(float t, fitsfile* file, FILE** log);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
 void LogFileInit(FILE** log);
@@ -21,6 +21,8 @@ int AddHeaderKey(char* message, fitsfile* file, FILE** log);
 void UpdateHeader(fitsfile* file, char* file_name);
 void FileName(char* message);
 void Temperature(int T);
+void UpdateStatement(config_t *cfg, FILE** log);
+
 
 
 
@@ -68,6 +70,9 @@ int Daemon(int argc, char* argv[]) {
 int Main(int argc, char* argv[]){
   FILE *log = NULL;   // Log file
 
+  config_t cfg;     // File to store camera statement
+  config_init(&cfg);
+
   int listener = 0;   // Socket descriptor
   struct sockaddr_in addr;  // Socket address
   int port_number = DEFAULT_PORT;   // TCP port number
@@ -80,30 +85,39 @@ int Main(int argc, char* argv[]){
   fitsfile *template_fits;  // File to store header data
   int fits_status = 0;
 
-  LogFileInit(&log);
+  LogFileInit(&log);    // File to write all events
 
-  SocketInit(&listener, &addr, port_number, &log);
+  SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
 
-  CameraInit(&log);
+  CameraInit(&log);     // Camera pre-setting
 
-  FitsInit(&template_fits);
-  
+  fits_create_file(*file, "\!header.fits", &status);   // File to store additional header informaion
+
+  UpdateStatement(&cfg, &log);    // Write down camera statement
+
   do{
-    GetMessage(listener, client_message);
-    PrintInLog(&log, client_message);
+    GetMessage(listener, client_message);   // Recieve message from client
+    PrintInLog(&log, client_message);   // Write this message in log
     strcpy(message, client_message);
-    command = strtok(client_message, " \n\0");
-    if (command == NULL) PrintInLog(&log, "Empty command");
-    else if (strcmp(command,"image") == 0) fits_status = image(atof(strtok(NULL, " \n\0")), template_fits, &log);
+    command = strtok(client_message, " \n\0");  // First word is command
+    if (command == NULL) PrintInLog(&log, "Empty command");   // In case of...
+    else if (strcmp(command,"image") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), template_fits, &log);
     else if (strcmp(command,"header") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
+    else if (strcmp(command,"temp") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
+    UpdateStatement(cfg, &log);   // Write down camera statement
   } while(strcmp(command,"exit") != 0);
 
   time_t cur_time = time(NULL);
   fprintf(log, "\nLog ending %s\n", ctime(&cur_time));
   close(listener);
-  fclose(log);
   fits_close_file(template_fits, &fits_status);
+  CollerOff() // Correct ShutDown procedure
+  while(GetTemperatureF() < -5){
+    UpdateStatement(&cfg, &log);
+  }
+  fclose(log);
   ShutDown();
+  config_destroy(&cfg);
 
   return (0);
 }
@@ -122,26 +136,31 @@ void LogFileInit(FILE** log){
 }
 
 void PrintInLog(FILE** log, char message[]){
-  time_t cur_time = time(NULL);
-  struct tm *curr_time = localtime(&cur_time);
-  char buffer[20];
+  // Print string and time in log file
+  time_t cur_time;
+  struct tm *curr_time;
+  char buffer[500];
 
-  // time(&cur_time);
-  // curr_time = localtime(&cur_time);
+  time(&cur_time);
+  curr_time = localtime(&cur_time);
 
-  strftime(buffer,20,"%T %h %d ",curr_time);
+  strftime(buffer,500,"%T %h %d ",curr_time);
   fprintf(*log, "%s: ", buffer);
-  char* msg = strtok(message, "\n");
+  char *msg;
+  strcpy(buffer, message);
+  msg = strtok(buffer, "\n\0");
   fprintf(*log, "%s\n", msg);
   fflush(*log);
 }
 
 void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE** log){
+  PrintInLog(log, "Socket initialization...");
   *listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (*listener < 0){
     PrintInLog(log, "Can't create socket");
     exit(1);
   }
+  PrintInLog(log, "Socket is created.");
 
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port_number);
@@ -150,8 +169,10 @@ void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE**
     PrintInLog(log, "Can't bind socket");
     exit(2);
   }
+  PrintInLog(log, "Socket is bound.");
 
   listen(*listener, 1);
+  PrintInLog(log, "TCP server is activated");
 }
 
 void GetMessage(int listener, char message[]){
@@ -175,70 +196,55 @@ void CameraInit(FILE** log){
   }
 
   sleep(2); //sleep to allow initialization to complete
+  PrintInLog(log, "Camera is initialized.");
 
   //Set Read Mode to --Image--
   SetReadMode(4);
+  PrintInLog(log, "Read mode is set to 'Image'.");
 
   //Set Acquisition mode to --Single scan--
   SetAcquisitionMode(3);
+  PrintInLog(log, "Acquisition mode is set to 'Single Scan'.");
 
   //Set initial exposure time
   SetExposureTime(0.1);
+  PrintInLog(log, "Exposure time is 0.1.");
 
-  SetNumberKinetics(1);
+  //SetNumberKinetics(1);
 
-  SetKineticCycleTime(2);
+  //SetKineticCycleTime(2);
 
   //Initialize Shutter
   SetShutter(1,0,50,50);
+  PrintInLog(log, "Shutter is in Auto mode.");
 }
 
 void FitsInit(fitsfile** file){
-  int width, height;
   int status = 0;
-  GetDetector(&width, &height);
-  long naxis[2] = {width, height};
   fits_create_file(file, "\!header.fits", &status);
-  fits_create_img(*file, LONG_IMG, 2, naxis, &status);
+  //fits_create_img(*file, LONG_IMG, 2, naxis, &status);
 }
 
-void mGetDetector(int *x, int *y){
-  fitsfile *detector;
-  int status = 0;
-  fits_open_data(&detector, "../test/detector.fits", READONLY, &status);
-  fits_read_key(detector, TINT, "NAXIS1", x, NULL, &status);
-  fits_read_key(detector, TINT, "NAXIS2", y, NULL, &status);
-}
 
-int save_fits(fitsfile* file){
-  fitsfile* result;
-  int status = 0;
-  fits_create_file(&result, "\!result.fits", &status);
-  fits_copy_file(file, result, 1, 1, 1, &status);
-  fits_close_file(result, &status);
-  return 0;
-}
-
-int image(float t, fitsfile* file, FILE** log){
+int Image(float t, fitsfile* file, FILE** log){
   int width, height;
   GetDetector(&width, &height);
-  //long naxis[2] = {width, height};
   SetImage(1,1,1,width,1,height); //horiz bin, vert bin, first xpix, last xpix, first ypix, last ypix
   char* file_name;
-  FileName(file_name); 
+  FileName(file_name);
 
   StartAcquisition();
   int status;
-  //int fits_status = 0;
 
   //Loop until acquisition finished
   GetStatus(&status);
   while(status==DRV_ACQUIRING) GetStatus(&status);
   PrintInLog(log, "Image is acquired");
 
-  SaveAsFITS(file_name, 2);
-  UpdateHeader(file, file_name);
-  
+  SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
+  PrintInLog(log, "Draft fits is saved.");
+  UpdateHeader(file, file_name);  // Write additional header keys
+
   return 0;
 }
 
@@ -264,7 +270,7 @@ void UpdateHeader(fitsfile* file, char* file_name){
   int status = 0;
   int n = 0;
   fitsfile* image;
-  char* card;
+  char card[100]={0};
   fits_open_data(&image, file_name, READWRITE, &status);
   fits_get_hdrspace(file, &n, NULL, &status);
   for (int i=0; i < n; i++){
@@ -275,5 +281,35 @@ void UpdateHeader(fitsfile* file, char* file_name){
 }
 
 void Temperature(int T){
+  CoolerON();
   SetTemperature(T);
+}
+
+void UpdateStatement(config_t* cfg, FILE** log){
+  static const char *output_file = "camera.info";
+  config_setting_t *root, *setting;
+  int number;
+  char str[1024] = {0};
+  float value;
+
+  root = config_root_setting(cfg);
+
+  GetCameraSerialNumber(&number);
+  setting = config_setting_add(root, "Serial", CONFIG_TYPE_INT);
+  config_setting_set_int(setting, number);
+
+  GetHeadModel(str);
+  setting = config_setting_add(root, "Model", CONFIG_TYPE_STRING);
+  config_setting_set_string(setting, str);
+
+  GetTemperatureF(&value);
+  setting = config_setting_add(root, "Temperature", CONFIG_TYPE_FLOAT);
+  config_setting_set_float(setting, value);
+
+  /* Write out the new configuration. */
+  if(! config_write_file(cfg, output_file)){
+    PrintInLog(log, "Can't update configuration!");
+  } else {
+    PrintInLog(log, "Configuration was updated.");
+  }
 }
