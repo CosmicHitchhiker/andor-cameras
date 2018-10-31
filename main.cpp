@@ -195,6 +195,7 @@ void GetMessage(int listener, char message[]){
 void CameraInit(FILE** log){
   unsigned long error;
   int NumberOfCameras, CameraHandle, i;
+  char Model[30];
 
   GetAvailableCameras(&NumberOfCameras);
   for (i = 0; i < NumberOfCameras; i++){
@@ -313,7 +314,6 @@ void Temperature(int T){
 void UpdateStatement(config_t* cfg, FILE** log){
   PrintInLog(log, "Updating statement...");
 
-  static const char *output_file = "camera.info";
   config_setting_t *root, *setting;
   int number;
   char str[1024] = {0};
@@ -326,6 +326,9 @@ void UpdateStatement(config_t* cfg, FILE** log){
   config_setting_set_float(setting, value);
   PrintInLog(log, "Temperature");
 
+  GetHeadModel(str);
+  static const char *output_file = strcat(str, ".info");
+
   /* Write out the new configuration. */
   if(! config_write_file(cfg, output_file)){
     PrintInLog(log, "Can't update configuration!");
@@ -335,7 +338,10 @@ void UpdateStatement(config_t* cfg, FILE** log){
 }
 
 void Shutter(int mode, FILE** log){
-  if (mode != 0) mode = 2;
+  if (mode > 2) {
+    PrintInLog(log, "Incorrect shutter mode!");
+    return;
+  }
   int InternalShutter = 0;  // This flag shows if camera has an internal shutter
   IsInternalMechanicalShutter(&InternalShutter); // Checking existance of internal shutter
   if (InternalShutter){
@@ -346,8 +352,17 @@ void Shutter(int mode, FILE** log){
     // time to open and close is about 50ms, external shutter mode is fully-auto
     SetShutterEx(1, mode, 50, 50, 0);
   }
-  if (mode != 0) PrintInLog(log, "Shutter is closed.");
-  else PrintInLog(log, "Shutter is in Auto mode.");
+
+  switch (mode){
+    case : 0
+      PrintInLog(log, "Shutter is in Auto mode.");
+      break;
+    case : 1
+      PrintInLog(log, "Shutter is opened.")
+      break;
+    case : 2
+      PrintInLog(log, "Shutter is closed.");
+  }
 }
 
 void StatementInit(config_t* cfg, FILE** log){
