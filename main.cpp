@@ -22,6 +22,8 @@ void UpdateHeader(fitsfile* file, char* file_name);
 void FileName(char* message);
 void Temperature(int T);
 void UpdateStatement(config_t *cfg, FILE** log);
+void Shutter(int mode, FILE** log);
+void StatementInit(config_t* cfg, FILE** log);
 
 
 
@@ -71,7 +73,6 @@ int Main(int argc, char* argv[]){
   FILE *log = NULL;   // Log file
 
   config_t cfg;     // File to store camera statement
-  config_init(&cfg);
 
   int listener = 0;   // Socket descriptor
   struct sockaddr_in addr;  // Socket address
@@ -91,9 +92,9 @@ int Main(int argc, char* argv[]){
 
   CameraInit(&log);     // Camera pre-setting
 
-  fits_create_file(*file, "\!header.fits", &status);   // File to store additional header informaion
+  fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
 
-  UpdateStatement(&cfg, &log);    // Write down camera statement
+  StatementInit(&cfg, &log);    // Write down camera statement
 
   do{
     GetMessage(listener, client_message);   // Recieve message from client
@@ -104,17 +105,23 @@ int Main(int argc, char* argv[]){
     else if (strcmp(command,"image") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), template_fits, &log);
     else if (strcmp(command,"header") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
     else if (strcmp(command,"temp") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
-    UpdateStatement(cfg, &log);   // Write down camera statement
+    else if (strcmp(command,"shutt") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
+    UpdateStatement(&cfg, &log);   // Write down camera statement
   } while(strcmp(command,"exit") != 0);
 
-  time_t cur_time = time(NULL);
-  fprintf(log, "\nLog ending %s\n", ctime(&cur_time));
+  
   close(listener);
   fits_close_file(template_fits, &fits_status);
-  CollerOff() // Correct ShutDown procedure
-  while(GetTemperatureF() < -5){
-    UpdateStatement(&cfg, &log);
+  int maxT, minT, T;
+  GetTemperature(&T);
+  GetTemperatureRange(&minT, &maxT);
+  SetTemperature(maxT);
+  while(T < maxT - 1){
+    GetTemperature(&T);
   }
+  CoolerOFF();
+  time_t cur_time = time(NULL);
+  fprintf(log, "\nLog ending %s\n", ctime(&cur_time));
   fclose(log);
   ShutDown();
   config_destroy(&cfg);
@@ -187,10 +194,17 @@ void GetMessage(int listener, char message[]){
 
 void CameraInit(FILE** log){
   unsigned long error;
+  int NumberOfCameras, CameraHandle, i;
 
-  //Initialize CCD
-  error = Initialize("/usr/local/etc/andor");
-  if(error!=DRV_SUCCESS){
+  GetAvailableCameras(&NumberOfCameras);
+  for (i = 0; i < NumberOfCameras; i++){
+    GetCameraHandle(i, &CameraHandle);
+    SetCurrentCamera(CameraHandle);
+    error = Initialize("/usr/local/etc/andor");
+    if (error == DRV_SUCCESS) break;
+  }
+  
+  if(i == NumberOfCameras){
     PrintInLog(log, "Initialisation error...exiting");
     exit(1);
   }
@@ -203,7 +217,7 @@ void CameraInit(FILE** log){
   PrintInLog(log, "Read mode is set to 'Image'.");
 
   //Set Acquisition mode to --Single scan--
-  SetAcquisitionMode(3);
+  SetAcquisitionMode(1);
   PrintInLog(log, "Acquisition mode is set to 'Single Scan'.");
 
   //Set initial exposure time
@@ -215,7 +229,16 @@ void CameraInit(FILE** log){
   //SetKineticCycleTime(2);
 
   //Initialize Shutter
-  SetShutter(1,0,50,50);
+  int InternalShutter = 0;  // This flag shows if camera has an internal shutter
+  IsInternalMechanicalShutter(&InternalShutter); // Checking existance of internal shutter
+  if (InternalShutter){
+    // TTL to open is high (1), mode is fully-auto, time to open and close is about 50ms
+    SetShutter(1,0,50,50);
+  } else {
+    // TTL to open is high (1), mode is fully-auto,
+    // time to open and close is about 50ms, external shutter mode is fully-auto
+    SetShutterEx(1, 0, 50, 50, 0);
+  }
   PrintInLog(log, "Shutter is in Auto mode.");
 }
 
@@ -233,6 +256,7 @@ int Image(float t, fitsfile* file, FILE** log){
   char* file_name;
   FileName(file_name);
 
+  SetExposureTime(t);
   StartAcquisition();
   int status;
 
@@ -244,6 +268,7 @@ int Image(float t, fitsfile* file, FILE** log){
   SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
   PrintInLog(log, "Draft fits is saved.");
   UpdateHeader(file, file_name);  // Write additional header keys
+  PrintInLog(log, "Result fits is saved.");
 
   return 0;
 }
@@ -273,8 +298,8 @@ void UpdateHeader(fitsfile* file, char* file_name){
   char card[100]={0};
   fits_open_data(&image, file_name, READWRITE, &status);
   fits_get_hdrspace(file, &n, NULL, &status);
-  for (int i=0; i < n; i++){
-    fits_read_record(file, i+1, card, &status);
+  for (int i=1; i < n+1; i++){
+    fits_read_record(file, i, card, &status);
     fits_write_record(image, card, &status);
   }
   fits_close_file(image, &status);
@@ -286,25 +311,78 @@ void Temperature(int T){
 }
 
 void UpdateStatement(config_t* cfg, FILE** log){
+  PrintInLog(log, "Updating statement...");
+
   static const char *output_file = "camera.info";
   config_setting_t *root, *setting;
   int number;
   char str[1024] = {0};
-  float value;
+  float value = 0;
 
   root = config_root_setting(cfg);
+
+  GetTemperatureF(&value);
+  setting = config_setting_get_member(root, "Temperature");
+  config_setting_set_float(setting, value);
+  PrintInLog(log, "Temperature");
+
+  /* Write out the new configuration. */
+  if(! config_write_file(cfg, output_file)){
+    PrintInLog(log, "Can't update configuration!");
+  } else {
+    PrintInLog(log, "Configuration was updated.");
+  }
+}
+
+void Shutter(int mode, FILE** log){
+  if (mode != 0) mode = 2;
+  int InternalShutter = 0;  // This flag shows if camera has an internal shutter
+  IsInternalMechanicalShutter(&InternalShutter); // Checking existance of internal shutter
+  if (InternalShutter){
+    // TTL to open is high (1), mode is fully-auto, time to open and close is about 50ms
+    SetShutter(1, mode, 50, 50);
+  } else {
+    // TTL to open is high (1), mode is fully-auto,
+    // time to open and close is about 50ms, external shutter mode is fully-auto
+    SetShutterEx(1, mode, 50, 50, 0);
+  }
+  if (mode != 0) PrintInLog(log, "Shutter is in Auto mode.");
+  else PrintInLog(log, "Shutter is closed.");
+}
+
+void StatementInit(config_t* cfg, FILE** log){
+  config_init(cfg);
+  PrintInLog(log, "Updating statement...");
+
+  config_setting_t *root, *setting;
+  int number;
+  char str[1024] = {0};
+  float value = 0;
+
+  root = config_root_setting(cfg);
+
+  number = getpid();
+  setting = config_setting_add(root, "Daemon", CONFIG_TYPE_INT);
+  config_setting_set_int(setting, number);
+  PrintInLog(log, "PID");
 
   GetCameraSerialNumber(&number);
   setting = config_setting_add(root, "Serial", CONFIG_TYPE_INT);
   config_setting_set_int(setting, number);
+  PrintInLog(log, "Serial");
 
   GetHeadModel(str);
   setting = config_setting_add(root, "Model", CONFIG_TYPE_STRING);
   config_setting_set_string(setting, str);
+  PrintInLog(log, "Model");
+  static const char *output_file = strcat(str, ".info");
 
   GetTemperatureF(&value);
   setting = config_setting_add(root, "Temperature", CONFIG_TYPE_FLOAT);
   config_setting_set_float(setting, value);
+  PrintInLog(log, "Temperature");
+
+
 
   /* Write out the new configuration. */
   if(! config_write_file(cfg, output_file)){
