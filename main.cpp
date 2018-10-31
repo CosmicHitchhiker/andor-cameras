@@ -109,7 +109,7 @@ int Main(int argc, char* argv[]){
     UpdateStatement(&cfg, &log);   // Write down camera statement
   } while(strcmp(command,"exit") != 0);
 
-  
+
   close(listener);
   fits_close_file(template_fits, &fits_status);
   int maxT, minT, T;
@@ -203,7 +203,7 @@ void CameraInit(FILE** log){
     error = Initialize("/usr/local/etc/andor");
     if (error == DRV_SUCCESS) break;
   }
-  
+
   if(i == NumberOfCameras){
     PrintInLog(log, "Initialisation error...exiting");
     exit(1);
@@ -346,8 +346,8 @@ void Shutter(int mode, FILE** log){
     // time to open and close is about 50ms, external shutter mode is fully-auto
     SetShutterEx(1, mode, 50, 50, 0);
   }
-  if (mode != 0) PrintInLog(log, "Shutter is in Auto mode.");
-  else PrintInLog(log, "Shutter is closed.");
+  if (mode != 0) PrintInLog(log, "Shutter is closed.");
+  else PrintInLog(log, "Shutter is in Auto mode.");
 }
 
 void StatementInit(config_t* cfg, FILE** log){
