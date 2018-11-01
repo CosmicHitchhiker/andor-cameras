@@ -195,7 +195,7 @@ void GetMessage(int listener, char message[]){
 void CameraInit(FILE** log){
   unsigned long error;
   int NumberOfCameras, CameraHandle, i;
-  char Model[30];
+  char Model[30] = {0};
 
   GetAvailableCameras(&NumberOfCameras);
   for (i = 0; i < NumberOfCameras; i++){
@@ -212,6 +212,8 @@ void CameraInit(FILE** log){
 
   sleep(2); //sleep to allow initialization to complete
   PrintInLog(log, "Camera is initialized.");
+  GetHeadModel(Model);
+  PrintInLog(log, Model);
 
   //Set Read Mode to --Image--
   SetReadMode(4);
@@ -224,10 +226,6 @@ void CameraInit(FILE** log){
   //Set initial exposure time
   SetExposureTime(0.1);
   PrintInLog(log, "Exposure time is 0.1.");
-
-  //SetNumberKinetics(1);
-
-  //SetKineticCycleTime(2);
 
   //Initialize Shutter
   int InternalShutter = 0;  // This flag shows if camera has an internal shutter
@@ -350,7 +348,7 @@ void Shutter(int mode, FILE** log){
   } else {
     // TTL to open is high (1), mode is fully-auto,
     // time to open and close is about 50ms, external shutter mode is fully-auto
-    SetShutterEx(1, mode, 50, 50, 0);
+    SetShutterEx(1, mode, 50, 50, mode);
   }
 
   switch (mode){
