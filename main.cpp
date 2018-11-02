@@ -11,7 +11,7 @@ int Image(float t, fitsfile* file, FILE** log);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
 void LogFileInit(FILE** log);
-void PrintInLog(FILE** log, char message[]);
+void PrintInLog(FILE** log, char message[], ...);
 void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE** log);
 void GetMessage(int listener, char message[]);
 void CameraInit(FILE** log);
@@ -141,21 +141,27 @@ void LogFileInit(FILE** log){
   fflush(*log);
 }
 
-void PrintInLog(FILE** log, char message[]){
+void PrintInLog(FILE** log, char message[], ...){
   // Print string and time in log file
   time_t cur_time;
   struct tm *curr_time;
   char buffer[500];
+  va_list arglist;
 
   time(&cur_time);
   curr_time = localtime(&cur_time);
 
   strftime(buffer,500,"%T %h %d ",curr_time);
   fprintf(*log, "%s: ", buffer);
+
   char *msg;
   strcpy(buffer, message);
   msg = strtok(buffer, "\n\0");
-  fprintf(*log, "%s\n", msg);
+  va_start(arglist, msg);
+  vfprintf(*log, msg, arglist);
+  va_end(arglist);
+  
+  fprintf(*log, "\n");
   fflush(*log);
 }
 
