@@ -16,7 +16,6 @@ void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE**
 void GetMessage(int listener, char message[]);
 void CameraInit(FILE** log);
 void FitsInit(fitsfile** file);
-void mGetDetector(int *x, int *y);
 int AddHeaderKey(char* message, fitsfile* file, FILE** log);
 void UpdateHeader(fitsfile* file, char* file_name);
 void FileName(char* message);
