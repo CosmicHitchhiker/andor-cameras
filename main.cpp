@@ -102,10 +102,10 @@ int Main(int argc, char* argv[]){
     strcpy(message, client_message);
     command = strtok(client_message, " \n\0");  // First word is command
     if (command == NULL) PrintInLog(&log, "Empty command");   // In case of...
-    else if (strcmp(command,"image") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), template_fits, &log);
-    else if (strcmp(command,"header") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
-    else if (strcmp(command,"temp") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
-    else if (strcmp(command,"shutt") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
+    else if (strcmp(command,"IMAG") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), template_fits, &log);
+    else if (strcmp(command,"HEAD") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
+    else if (strcmp(command,"TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
+    else if (strcmp(command,"SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
     UpdateStatement(&cfg, &log);   // Write down camera statement
   } while(strcmp(command,"exit") != 0);
 
@@ -262,7 +262,11 @@ int Image(float t, fitsfile* file, FILE** log){
   //Loop until acquisition finished
   GetStatus(&status);
   while(status==DRV_ACQUIRING) GetStatus(&status);
-  PrintInLog(log, "Image is acquired");
+  if (status == DRV_SUCCESS) PrintInLog(log, "Image is acquired");
+  else {
+    PrintInLog(log, "Error while acqiring data");
+    return 0;
+  }
 
   SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
   PrintInLog(log, "Draft fits is saved.");
