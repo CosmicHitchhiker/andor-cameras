@@ -72,6 +72,7 @@ int Main(int argc, char* argv[]){
   FILE *log = NULL;   // Log file
 
   config_t cfg;     // File to store camera statement
+  config_t ini;     // Initial settings
 
   int listener = 0;   // Socket descriptor
   struct sockaddr_in addr;  // Socket address
@@ -87,9 +88,9 @@ int Main(int argc, char* argv[]){
 
   LogFileInit(&log);    // File to write all events
 
-  SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
-
   CameraInit(&log);     // Camera pre-setting
+
+  SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
 
   fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
 
@@ -148,6 +149,9 @@ void PrintInLog(FILE** log, char message[], ...){
   char buffer[500];
   va_list arglist;
 
+  GetHeadModel(buffer);
+  fprintf(*log, "%s ", buffer);
+
   time(&cur_time);
   curr_time = localtime(&cur_time);
 
@@ -160,7 +164,7 @@ void PrintInLog(FILE** log, char message[], ...){
   va_start(arglist, msg);
   vfprintf(*log, msg, arglist);
   va_end(arglist);
-  
+
   fprintf(*log, "\n");
   fflush(*log);
 }
@@ -261,19 +265,25 @@ int Image(float t, fitsfile* file, FILE** log){
   FileName(file_name);
 
   SetExposureTime(t);
+  PrintInLog(log, "Exposure time is %f", t);
+  PrintInLog(log, "Starting acquisition");
   StartAcquisition();
   int status;
 
   //Loop until acquisition finished
   GetStatus(&status);
   while(status==DRV_ACQUIRING) GetStatus(&status);
-  if (status == DRV_SUCCESS) PrintInLog(log, "Image is acquired");
-  else {
+  if (status != DRV_IDLE){
     PrintInLog(log, "Error while acqiring data");
     return 0;
   }
+  PrintInLog(log, "Image is acquired");
 
-  SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
+  status = SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
+  if (status != DRV_SUCCESS){
+    PrintInLog(log, "Error while saving fits");
+    return 0;
+  }
   PrintInLog(log, "Draft fits is saved.");
   UpdateHeader(file, file_name);  // Write additional header keys
   PrintInLog(log, "Result fits is saved.");
