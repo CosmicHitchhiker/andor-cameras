@@ -10,7 +10,7 @@ int temp(int T);
 int Image(float t, fitsfile* file, FILE** log);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
-void LogFileInit(FILE** log);
+void LogFileInit(FILE** log, char* file_name);
 void PrintInLog(FILE** log, char message[], ...);
 void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE** log);
 void GetMessage(int listener, char message[]);
@@ -23,6 +23,7 @@ void Temperature(int T);
 void UpdateStatement(config_t *cfg, FILE** log);
 void Shutter(int mode, FILE** log);
 void StatementInit(config_t* cfg, FILE** log);
+void InitialSettings(config_t* ini, char* model_name, int* port);
 
 
 
@@ -74,21 +75,21 @@ int Main(int argc, char* argv[]){
   config_t cfg;     // File to store camera statement
   config_t ini;     // Initial settings
 
+  int port_number;
   int listener = 0;   // Socket descriptor
   struct sockaddr_in addr;  // Socket address
-  int port_number = DEFAULT_PORT;   // TCP port number
-  if (argc > 1)
-    port_number = atoi(argv[1]);
   char client_message[1024] = {0};  // Buffer for client message
   char *command;  // Buffer for command (separated from the message)
   char message[1024] = {0};
+  char Model[40] = {0};
 
   fitsfile *template_fits;  // File to store header data
   int fits_status = 0;
 
-  LogFileInit(&log);    // File to write all events
+  CameraInit(&log);     // Camera pre-setting and log creating
 
-  CameraInit(&log);     // Camera pre-setting
+  GetHeadModel(Model);
+  InitialSettings(&ini, Model, &port_number);
 
   SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
 
@@ -129,8 +130,12 @@ int Main(int argc, char* argv[]){
   return (0);
 }
 
-void LogFileInit(FILE** log){
-  *log = fopen("log.txt", "a");
+void LogFileInit(FILE** log, char* file_name){
+  char buff[50] = {0};
+  strcpy(buff, file_name);
+  strcat(buff, ".log");
+  printf("%s\n", buff);
+  *log = fopen(buff, "a");
   // In case of errors
   if (*log == NULL) {
     perror("Can't open log file");
@@ -204,7 +209,6 @@ void GetMessage(int listener, char message[]){
 void CameraInit(FILE** log){
   unsigned long error;
   int NumberOfCameras, CameraHandle, i;
-  char Model[30] = {0};
 
   GetAvailableCameras(&NumberOfCameras);
   for (i = 0; i < NumberOfCameras; i++){
@@ -215,14 +219,16 @@ void CameraInit(FILE** log){
   }
 
   if(i == NumberOfCameras){
-    PrintInLog(log, "Initialisation error...exiting");
+    printf("Can't find desired camera");
     exit(1);
   }
 
-  sleep(2); //sleep to allow initialization to complete
-  PrintInLog(log, "Camera is initialized.");
+  char Model[40] = {0};
   GetHeadModel(Model);
-  PrintInLog(log, Model);
+
+  LogFileInit(log, Model);    // File to write all events
+
+  PrintInLog(log, "Camera %s is initialized.", Model);
 
   //Set Read Mode to --Image--
   SetReadMode(4);
@@ -293,7 +299,7 @@ int Image(float t, fitsfile* file, FILE** log){
 
 int AddHeaderKey(char* message, fitsfile* file, FILE** log){
   message = strtok(message, "\n");
-  char* command = strtok(message, " \0\n");
+  strtok(message, " \0\n");
   char* key = strtok(NULL, " \0\n");
   char* value = strtok(NULL, " \0\n");
   char* comment = strtok(NULL, " \0\n");
@@ -332,7 +338,6 @@ void UpdateStatement(config_t* cfg, FILE** log){
   PrintInLog(log, "Updating statement...");
 
   config_setting_t *root, *setting;
-  int number;
   char str[1024] = {0};
   float value = 0;
 
@@ -422,4 +427,23 @@ void StatementInit(config_t* cfg, FILE** log){
   } else {
     PrintInLog(log, "Configuration was updated.");
   }
+}
+
+void InitialSettings(config_t* ini, char* model_name, int* port){
+  config_setting_t *root;
+
+  config_init(ini);
+  char file_name[40] = {0};
+  strcpy(file_name, model_name);
+  strcat(file_name, ".ini");
+  /* Read the file. If there is an error, report it and exit. */
+  if(! config_read_file(ini, file_name))
+  {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(ini),
+            config_error_line(ini), config_error_text(ini));
+    config_destroy(ini);
+    exit(EXIT_FAILURE);
+  }
+  root = config_root_setting(ini);
+  config_setting_lookup_int(root, "Port", port);
 }
