@@ -8,6 +8,7 @@
 #include <string.h>
 #include <libconfig.h>
 #include <time.h>
+#include <stdarg.h>
 
 #ifdef __GNUC__
 #  if(__GNUC__ > 3 || __GNUC__ ==3)
