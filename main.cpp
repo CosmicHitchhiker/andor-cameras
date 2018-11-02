@@ -356,13 +356,13 @@ void Shutter(int mode, FILE** log){
   }
 
   switch (mode){
-    case : 0
+    case 0:
       PrintInLog(log, "Shutter is in Auto mode.");
       break;
-    case : 1
-      PrintInLog(log, "Shutter is opened.")
+    case 1:
+      PrintInLog(log, "Shutter is opened.");
       break;
-    case : 2
+    case 2:
       PrintInLog(log, "Shutter is closed.");
   }
 }
