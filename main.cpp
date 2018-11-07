@@ -190,7 +190,7 @@ void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE**
     PrintInLog(log, "Can't bind socket");
     exit(2);
   }
-  PrintInLog(log, "Socket is bound.");
+  PrintInLog(log, "Socket is bound on port %d.", port_number);
 
   listen(*listener, 1);
   PrintInLog(log, "TCP server is activated");
@@ -271,7 +271,7 @@ int Image(float t, fitsfile* file, FILE** log){
   FileName(file_name);
 
   SetExposureTime(t);
-  PrintInLog(log, "Exposure time is %f", t);
+  PrintInLog(log, "Exposure time is %g", t);
   PrintInLog(log, "Starting acquisition");
   StartAcquisition();
   int status;
@@ -284,6 +284,9 @@ int Image(float t, fitsfile* file, FILE** log){
     return 0;
   }
   PrintInLog(log, "Image is acquired");
+
+  PrintInLog(log, "Saving file %s", file_name);
+  //printf("%s\n", file_name);
 
   status = SaveAsFITS(file_name, 2);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
@@ -401,23 +404,23 @@ void StatementInit(config_t* cfg, FILE** log){
   number = getpid();
   setting = config_setting_add(root, "Daemon", CONFIG_TYPE_INT);
   config_setting_set_int(setting, number);
-  PrintInLog(log, "PID");
+  PrintInLog(log, "PID %d", number);
 
   GetCameraSerialNumber(&number);
   setting = config_setting_add(root, "Serial", CONFIG_TYPE_INT);
   config_setting_set_int(setting, number);
-  PrintInLog(log, "Serial");
+  PrintInLog(log, "Serial %d", number);
 
   GetHeadModel(str);
   setting = config_setting_add(root, "Model", CONFIG_TYPE_STRING);
   config_setting_set_string(setting, str);
-  PrintInLog(log, "Model");
+  PrintInLog(log, "Model %s", str);
   static const char *output_file = strcat(str, ".info");
 
   GetTemperatureF(&value);
   setting = config_setting_add(root, "Temperature", CONFIG_TYPE_FLOAT);
   config_setting_set_float(setting, value);
-  PrintInLog(log, "Temperature");
+  PrintInLog(log, "Temperature %.2f", value);
 
 
 
