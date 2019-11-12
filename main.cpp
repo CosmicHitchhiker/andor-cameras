@@ -1,4 +1,3 @@
-// TODO: make an extension for empty commands
 // TODO: Make temperature in camera.info shorter
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #include "main.h"
@@ -23,11 +22,8 @@ void Temperature(int T);
 void UpdateStatement(config_t *cfg, FILE** log);
 void Shutter(int mode, FILE** log);
 void StatementInit(config_t* cfg, FILE** log);
-void InitialSettings(config_t* ini, char* model_name, int* port);
-
-
-
-
+void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* header);
+int AddInitialKey(char* message, fitsfile* file, FILE** log);
 
 
 int main(int argc, char* argv[]) {
@@ -89,11 +85,10 @@ int Main(int argc, char* argv[]){
   CameraInit(&log);     // Camera pre-setting and log creating
 
   GetHeadModel(Model);
-  InitialSettings(&ini, Model, &port_number);
+  fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
+  InitialSettings(&ini, Model, &port_number, template_fits);
 
   SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
-
-  fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
 
   StatementInit(&cfg, &log);    // Write down camera statement
 
@@ -108,7 +103,7 @@ int Main(int argc, char* argv[]){
     else if (strcmp(command,"TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
     else if (strcmp(command,"SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
     UpdateStatement(&cfg, &log);   // Write down camera statement
-  } while(strcmp(command,"exit") != 0);
+  } while(strcmp(command,"EXIT") != 0);
 
 
   close(listener);
@@ -311,6 +306,15 @@ int AddHeaderKey(char* message, fitsfile* file, FILE** log){
   return 0;
 }
 
+int AddInitialKey(char* message, fitsfile* file, FILE** log){
+  char* key = strtok(message, " \0\n");
+  char* value = strtok(NULL, " \0\n");
+  char* comment = strtok(NULL, " \0\n");
+  int status = 0;
+  fits_update_key(file, TSTRING, key, value, comment, &status);
+  return 0;
+}
+
 void FileName(char* message){
   time_t cur_time = time(NULL);
   struct tm *curr_time = gmtime(&cur_time);
@@ -432,8 +436,8 @@ void StatementInit(config_t* cfg, FILE** log){
   }
 }
 
-void InitialSettings(config_t* ini, char* model_name, int* port){
-  config_setting_t *root;
+void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* file_h, FILE** log){
+  config_setting_t *root, *header;
 
   config_init(ini);
   char file_name[40] = {0};
@@ -449,4 +453,22 @@ void InitialSettings(config_t* ini, char* model_name, int* port){
   }
   root = config_root_setting(ini);
   config_setting_lookup_int(root, "Port", port);
+
+  header = config_lookup(ini, "Header");
+  if(header != NULL)
+  {
+    int count = config_setting_length(header);
+    int i;
+
+    PrintInLog(log, "Initial header values:");
+    for(i = 0; i < count; ++i)
+    {
+      config_setting_t *header_key = config_setting_get_elem(header, i);
+      const char * str = config_setting_get_string(header_key);
+      char str2[100] = {0};
+      strcpy(str2, str);
+      PrintInLog(log, str2);
+      AddInitialKey(str2, file);
+    }
+  }
 }
