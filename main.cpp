@@ -271,7 +271,7 @@ int Image(float t, fitsfile* file, FILE** log){
   PrintInLog(log, "Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
   PrintInLog(log, "Starting acquisition");
   StartAcquisition();
-  int status;
+  int status = 0;
 
   //Loop until acquisition finished
   GetStatus(&status);
