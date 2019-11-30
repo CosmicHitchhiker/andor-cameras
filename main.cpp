@@ -356,7 +356,7 @@ void UpdateStatement(config_t* cfg, FILE** log){
   GetTemperatureF(&value);
   setting = config_setting_get_member(root, "Temperature");
   config_setting_set_float(setting, value);
-  PrintInLog(log, "Temperature");
+  PrintInLog(log, "Temperature %g", value);
 
   GetHeadModel(str);
   static const char *output_file = strcat(str, ".info");
