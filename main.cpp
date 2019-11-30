@@ -266,7 +266,9 @@ int Image(float t, fitsfile* file, FILE** log){
   FileName(file_name);
 
   SetExposureTime(t);
-  PrintInLog(log, "Exposure time is %g", t);
+  float exposure, accumulate, kinetic;
+  GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
+  PrintInLog(log, "Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
   PrintInLog(log, "Starting acquisition");
   StartAcquisition();
   int status;
@@ -275,7 +277,6 @@ int Image(float t, fitsfile* file, FILE** log){
   GetStatus(&status);
   while(status == DRV_ACQUIRING){
     GetStatus(&status);
-    PrintInLog(log, "Acquiring data");
   }
   if (status != DRV_IDLE){
     PrintInLog(log, "Error while acqiring data");
