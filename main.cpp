@@ -273,7 +273,10 @@ int Image(float t, fitsfile* file, FILE** log){
 
   //Loop until acquisition finished
   GetStatus(&status);
-  while(status==DRV_ACQUIRING) GetStatus(&status);
+  while(status == DRV_ACQUIRING){
+    GetStatus(&status);
+    PrintInLog(log, "Acquiring data");
+  }
   if (status != DRV_IDLE){
     PrintInLog(log, "Error while acqiring data");
     return 0;
