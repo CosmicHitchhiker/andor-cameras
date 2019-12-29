@@ -22,7 +22,7 @@ void Temperature(int T);
 void UpdateStatement(config_t *cfg, FILE** log);
 void Shutter(int mode, FILE** log);
 void StatementInit(config_t* cfg, FILE** log);
-void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* header);
+void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* header, FILE** log);
 int AddInitialKey(char* message, fitsfile* file, FILE** log);
 
 
@@ -86,7 +86,7 @@ int Main(int argc, char* argv[]){
 
   GetHeadModel(Model);
   fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
-  InitialSettings(&ini, Model, &port_number, template_fits);
+  InitialSettings(&ini, Model, &port_number, template_fits, &log);
 
   SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
 
@@ -266,14 +266,18 @@ int Image(float t, fitsfile* file, FILE** log){
   FileName(file_name);
 
   SetExposureTime(t);
-  PrintInLog(log, "Exposure time is %g", t);
+  float exposure, accumulate, kinetic;
+  GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
+  PrintInLog(log, "Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
   PrintInLog(log, "Starting acquisition");
   StartAcquisition();
-  int status;
+  int status = 0;
 
   //Loop until acquisition finished
   GetStatus(&status);
-  while(status==DRV_ACQUIRING) GetStatus(&status);
+  while(status == DRV_ACQUIRING){
+    GetStatus(&status);
+  }
   if (status != DRV_IDLE){
     PrintInLog(log, "Error while acqiring data");
     return 0;
@@ -353,7 +357,7 @@ void UpdateStatement(config_t* cfg, FILE** log){
   GetTemperatureF(&value);
   setting = config_setting_get_member(root, "Temperature");
   config_setting_set_float(setting, value);
-  PrintInLog(log, "Temperature");
+  PrintInLog(log, "Temperature %g", value);
 
   GetHeadModel(str);
   static const char *output_file = strcat(str, ".info");
@@ -468,7 +472,7 @@ void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* file_
       char str2[100] = {0};
       strcpy(str2, str);
       PrintInLog(log, str2);
-      AddInitialKey(str2, file);
+      AddInitialKey(str2, file_h, log);
     }
   }
 }
