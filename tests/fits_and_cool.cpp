@@ -103,6 +103,7 @@ int main(int argc, char* argv[])
 		cout << "f. Cooling Status" << endl;
 		cout << endl;
 		cout << "g. VSSpeeds" << endl;
+		cout << "h. HSSpeeds" << endl;
 		cout << endl;
 		cout << "z.     Exit" << endl;
 		cout << "====================" << endl;
@@ -189,6 +190,20 @@ int main(int argc, char* argv[])
 			status = GetNumberVSSpeeds(&NumberOfSpeeds);
 			for (int j=0; j<NumberOfSpeeds; j++){
 				status = GetVSSpeed(j, &speed);
+				cout << "speed " << j << " is " << speed << endl;
+			}
+			}
+
+			break;
+
+		case 'h': //HSSpeed
+			{
+			int NumberOfSpeeds;
+			float speed;
+			unsigned int status;
+			status = GetNumberHSSpeeds(0, 0, &NumberOfSpeeds);
+			for (int j=0; j<NumberOfSpeeds; j++){
+				status = GetHSSpeed(0, 0, j, &speed);
 				cout << "speed " << j << " is " << speed << endl;
 			}
 			}
