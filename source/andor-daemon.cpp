@@ -1,4 +1,4 @@
-#include "main.h"
+#include "andor-daemon.h"
 
 #define DEFAULT_PORT 1234
 
