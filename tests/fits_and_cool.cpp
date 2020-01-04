@@ -102,6 +102,8 @@ int main(int argc, char* argv[])
 		cout << "e. Stop Cooler" << endl;
 		cout << "f. Cooling Status" << endl;
 		cout << endl;
+		cout << "g. VSSpeeds" << endl;
+		cout << endl;
 		cout << "z.     Exit" << endl;
 		cout << "====================" << endl;
 		cout << "Choice?::";
@@ -128,7 +130,7 @@ int main(int argc, char* argv[])
 
       		SaveAsFITS("./image2.fits", 2);
 
-      delete[] imageData;
+      		delete[] imageData;
 			}
 
 			break;
@@ -167,14 +169,28 @@ int main(int argc, char* argv[])
 			{
 			unsigned int status;
 			status = GetTemperature(&iTemp);
-      int min, max;
-      status = GetTemperatureRange(&min, &max);
+      		int min, max;
+      		status = GetTemperatureRange(&min, &max);
 
-      cout << min << " < T < " << max << endl;
+      		cout << min << " < T < " << max << endl;
 			cout << "Temperature is " << iTemp << "C" << endl;
 			if(status==DRV_TEMPERATURE_OFF) cout << "Cooler is OFF" << endl;
 			else if(status==DRV_TEMPERATURE_STABILIZED) cout << "Cooler Stabilised at target Temperature" << endl;
 			else cout << "Cooler is ON" << endl;
+			}
+
+			break;
+
+		case 'g': //VSSpeed
+			{
+			int NumberOfSpeeds;
+			float speed;
+			unsigned int status;
+			status = GetNumberVSSpeeds(&NumberOfSpeeds);
+			for (int j=0; j<NumberOfSpeeds; j++){
+				status = GetVSSpeed(j, &speed);
+				cout << "speed " << j << " is " << speed << endl;
+			}
 			}
 
 			break;
