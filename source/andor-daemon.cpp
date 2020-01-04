@@ -361,7 +361,7 @@ void FileName(char* prefix, char* message){
   time_t cur_time = time(NULL);
   struct tm *curr_time = gmtime(&cur_time);
   char tfmt[50];
-  sprintf(tfmt,"./data/%s%%Y%%m%%d%%H%%M%%S.fits",prefix);
+  sprintf(tfmt,"%s%%Y%%m%%d%%H%%M%%S.fits",prefix);
   strftime(message,50,tfmt,curr_time);
 //  strftime(message,50,"TDS%Y%m%d%H%M%S.fits",curr_time);
 }
