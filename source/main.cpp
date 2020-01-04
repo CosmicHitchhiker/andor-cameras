@@ -1,28 +1,26 @@
-// TODO: Make temperature in camera.info shorter
-#pragma GCC diagnostic ignored "-Wwrite-strings"
 #include "main.h"
 
 #define DEFAULT_PORT 1234
 
 int CameraSelect (int iNumArgs, char* szArgList[]);
 int temp(int T);
-int Image(float t, fitsfile* file, FILE** log);
+int Image(float t, char* prefix, fitsfile* file, FILE** log);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
 void LogFileInit(FILE** log, char* file_name);
 void PrintInLog(FILE** log, char message[], ...);
 void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE** log);
-void GetMessage(int listener, char message[]);
+int GetMessage(int listener, char message[]);
 void CameraInit(FILE** log);
 void FitsInit(fitsfile** file);
 int AddHeaderKey(char* message, fitsfile* file, FILE** log);
 void UpdateHeader(fitsfile* file, char* file_name);
-void FileName(char* message);
+void FileName(char* prefix, char* message);
 void Temperature(int T);
 void UpdateStatement(config_t *cfg, FILE** log);
 void Shutter(int mode, FILE** log);
 void StatementInit(config_t* cfg, FILE** log);
-void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* header, FILE** log);
+void InitialSettings(config_t* ini, char* model_name, int* port, char** prefix, fitsfile* header, FILE** log);
 int AddInitialKey(char* message, fitsfile* file, FILE** log);
 
 
@@ -64,6 +62,12 @@ int Daemon(int argc, char* argv[]) {
 
   return (0);
 }
+/*char prefix[10] = "KGO";
+char * prefix = new char[10];
+prefix[0]='K';
+prefix[1]='G';
+prefix[2]='O';
+prefix[3]='\0';*/
 
 int Main(int argc, char* argv[]){
   FILE *log = NULL;   // Log file
@@ -78,6 +82,7 @@ int Main(int argc, char* argv[]){
   char *command;  // Buffer for command (separated from the message)
   char message[1024] = {0};
   char Model[40] = {0};
+  char * prefix;
 
   fitsfile *template_fits;  // File to store header data
   int fits_status = 0;
@@ -86,34 +91,44 @@ int Main(int argc, char* argv[]){
 
   GetHeadModel(Model);
   fits_create_file(&template_fits, "\!header.fits", &fits_status);   // File to store additional header informaion
-  InitialSettings(&ini, Model, &port_number, template_fits, &log);
-
+  InitialSettings(&ini, Model, &port_number,&prefix, template_fits, &log);
   SocketInit(&listener, &addr, port_number, &log);    // Start TCP server
 
   StatementInit(&cfg, &log);    // Write down camera statement
+  int maxT, minT, T;
+  float Tf;
 
   do{
-    GetMessage(listener, client_message);   // Recieve message from client
+    int sock = GetMessage(listener, client_message);   // Recieve message from client
     PrintInLog(&log, client_message);   // Write this message in log
     strcpy(message, client_message);
     command = strtok(client_message, " \n\0");  // First word is command
     if (command == NULL) PrintInLog(&log, "Empty command");   // In case of...
-    else if (strcmp(command,"IMAG") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), template_fits, &log);
-    else if (strcmp(command,"HEAD") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
-    else if (strcmp(command,"TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
-    else if (strcmp(command,"SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
-    UpdateStatement(&cfg, &log);   // Write down camera statement
+    else {
+      if (strcmp(command,"IMAG") == 0) fits_status = Image(atof(strtok(NULL, " \n\0")), prefix, template_fits, &log);
+      else if (strcmp(command,"HEAD") == 0) fits_status = AddHeaderKey(message, template_fits, &log);
+      else if (strcmp(command,"TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
+      else if (strcmp(command,"SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
+      else if (strcmp(command,"GET") == 0) { 
+        GetTemperatureF(&Tf); 
+        sprintf(message,"Temperature %6.2f\n",Tf);
+        PrintInLog(&log,message);
+        send(sock, message , strlen(message) , 0 ); 
+      }
+      UpdateStatement(&cfg, &log);   // Write down camera statement
+    }
+    close(sock);    
   } while(strcmp(command,"EXIT") != 0);
-
+   PrintInLog(&log, "Command loop exit");
 
   close(listener);
   fits_close_file(template_fits, &fits_status);
-  int maxT, minT, T;
   GetTemperature(&T);
   GetTemperatureRange(&minT, &maxT);
   SetTemperature(maxT);
   while(T < maxT - 1){
     GetTemperature(&T);
+    sleep(10);
   }
   CoolerOFF();
   time_t cur_time = time(NULL);
@@ -191,14 +206,15 @@ void SocketInit(int* listener, struct sockaddr_in* addr, int port_number, FILE**
   PrintInLog(log, "TCP server is activated");
 }
 
-void GetMessage(int listener, char message[]){
+int GetMessage(int listener, char message[]){
   int sock = accept(listener, 0, 0);
     if(sock < 0){
         perror("Can't connect to the client\n");
         exit(3);
     }
   read(sock, message, 1024);
-  close(sock);
+  return sock;
+//  close(sock);
 }
 
 void CameraInit(FILE** log){
@@ -258,12 +274,12 @@ void FitsInit(fitsfile** file){
 }
 
 
-int Image(float t, fitsfile* file, FILE** log){
+int Image(float t, char* prefix, fitsfile* file, FILE** log){
   int width, height;
   GetDetector(&width, &height);
   SetImage(1,1,1,width,1,height); //horiz bin, vert bin, first xpix, last xpix, first ypix, last ypix
   char* file_name;
-  FileName(file_name);
+  FileName(prefix, file_name);
 
   SetExposureTime(t);
   float exposure, accumulate, kinetic;
@@ -303,8 +319,8 @@ int AddHeaderKey(char* message, fitsfile* file, FILE** log){
   message = strtok(message, "\n");
   strtok(message, " \0\n");
   char* key = strtok(NULL, " \0\n");
-  char* value = strtok(NULL, " \0\n");
-  char* comment = strtok(NULL, " \0\n");
+  char* value = strtok(NULL, "\\\0\n");
+  char* comment = strtok(NULL, "\\\0\n");
   int status = 0;
   fits_update_key(file, TSTRING, key, value, comment, &status);
   return 0;
@@ -312,18 +328,20 @@ int AddHeaderKey(char* message, fitsfile* file, FILE** log){
 
 int AddInitialKey(char* message, fitsfile* file, FILE** log){
   char* key = strtok(message, " \0\n");
-  char* value = strtok(NULL, " \0\n");
-  char* comment = strtok(NULL, " \0\n");
+  char* value = strtok(NULL, "\\\0\n");
+  char* comment = strtok(NULL, "\\\0\n");
   int status = 0;
   fits_update_key(file, TSTRING, key, value, comment, &status);
   return 0;
 }
 
-void FileName(char* message){
+void FileName(char* prefix, char* message){
   time_t cur_time = time(NULL);
   struct tm *curr_time = gmtime(&cur_time);
-
-  strftime(message,50,"KGO%Y%m%d%H%M%S.fits",curr_time);
+  char tfmt[50];
+  sprintf(tfmt,"%s%%Y%%m%%d%%H%%M%%S.fits",prefix);
+  strftime(message,50,tfmt,curr_time);
+//  strftime(message,50,"TDS%Y%m%d%H%M%S.fits",curr_time);
 }
 
 void UpdateHeader(fitsfile* file, char* file_name){
@@ -440,7 +458,7 @@ void StatementInit(config_t* cfg, FILE** log){
   }
 }
 
-void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* file_h, FILE** log){
+void InitialSettings(config_t* ini, char* model_name, int* port, char** prefix, fitsfile* file_h, FILE** log){
   config_setting_t *root, *header;
 
   config_init(ini);
@@ -457,7 +475,7 @@ void InitialSettings(config_t* ini, char* model_name, int* port, fitsfile* file_
   }
   root = config_root_setting(ini);
   config_setting_lookup_int(root, "Port", port);
-
+  config_setting_lookup_string(root, "Prefix", (const char**)prefix);
   header = config_lookup(ini, "Header");
   if(header != NULL)
   {
