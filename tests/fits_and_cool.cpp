@@ -39,13 +39,27 @@ int main(int argc, char* argv[])
 	float fChoice;
 	int width, height;
 	int iTemp;
+	int NumberOfCameras, CameraHandle, i;
 
-	//Initialize CCD
-	error = Initialize("/usr/local/etc/andor");
-	if(error!=DRV_SUCCESS){
-		cout << "Initialisation error...exiting" << endl;
-		return(1);
+	GetAvailableCameras(&NumberOfCameras);
+	for (i = 0; i < NumberOfCameras; i++){
+		GetCameraHandle(i, &CameraHandle);
+		SetCurrentCamera(CameraHandle);
+		error = Initialize("/usr/local/etc/andor");
+		if (error == DRV_SUCCESS) break;
 	}
+
+	if(i == NumberOfCameras){
+		printf("Can't find desired camera");
+		exit(1);
+	}
+
+	// //Initialize CCD
+	// error = Initialize("/usr/local/etc/andor");
+	// if(error!=DRV_SUCCESS){
+	// 	cout << "Initialisation error...exiting" << endl;
+	// 	return(1);
+	// }
 
 	sleep(2); //sleep to allow initialization to complete
 
@@ -53,22 +67,27 @@ int main(int argc, char* argv[])
 	SetReadMode(4);
 
 	//Set Acquisition mode to --Single scan--
-	SetAcquisitionMode(3);
+	SetAcquisitionMode(1);
 
 	//Set initial exposure time
 	SetExposureTime(0.1);
 
-	SetNumberKinetics(1);
-
-	SetKineticCycleTime(2);
+	//Initialize Shutter
+	int InternalShutter = 0;  // This flag shows if camera has an internal shutter
+	IsInternalMechanicalShutter(&InternalShutter); // Checking existance of internal shutter
+	if (InternalShutter){
+		// TTL to open is high (1), mode is fully-auto, time to open and close is about 50ms
+		SetShutter(1,0,50,50);
+	} else {
+		// TTL to open is high (1), mode is fully-auto,
+		// time to open and close is about 50ms, external shutter mode is fully-auto
+		SetShutterEx(1, 0, 50, 50, 0);
+	}
 
 	//Get Detector dimensions
 	GetDetector(&width, &height);
 
-	//Initialize Shutter
-	SetShutter(1,0,50,50);
-
-  SetImage(1,1,1,width,1,height);
+    SetImage(1,1,1,width,1,height);
 
 	quit = false;
 	do{
