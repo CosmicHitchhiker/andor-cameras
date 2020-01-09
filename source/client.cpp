@@ -5,10 +5,6 @@
 #include <unistd.h>
 #include <stdio.h>
 
-
-int sendall(int s, char *buf, int len, int flags);
-int recvall(int s, char *buf, int len, int flags);
-
 int main()
 {
     char message[1024] = {0}, buf[1024] = {0};

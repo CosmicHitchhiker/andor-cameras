@@ -2,8 +2,6 @@
 
 #define DEFAULT_PORT 1234
 
-int CameraSelect (int iNumArgs, char* szArgList[]);
-int temp(int T);
 int Image(float t, char* prefix, fitsfile* file, FILE** log);
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
