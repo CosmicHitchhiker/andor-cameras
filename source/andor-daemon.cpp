@@ -1,4 +1,4 @@
-#include "main.h"
+#include "andor-daemon.h"
 
 #define DEFAULT_PORT 1234
 
@@ -62,12 +62,6 @@ int Daemon(int argc, char* argv[]) {
 
   return (0);
 }
-/*char prefix[10] = "KGO";
-char * prefix = new char[10];
-prefix[0]='K';
-prefix[1]='G';
-prefix[2]='O';
-prefix[3]='\0';*/
 
 int Main(int argc, char* argv[]){
   FILE *log = NULL;   // Log file
@@ -265,6 +259,34 @@ void CameraInit(FILE** log){
     SetShutterEx(1, 0, 50, 50, 0);
   }
   PrintInLog(log, "Shutter is in Auto mode.");
+
+  int NumberOfSpeeds, minSpeedIndex=0;
+  float speed, minSpeed=100;
+
+  GetNumberHSSpeeds(0, 0, &NumberOfSpeeds);
+  for (int j=0; j<NumberOfSpeeds; j++){
+    GetHSSpeed(0, 0, j, &speed);
+    if (speed < minSpeed){
+      minSpeedIndex = j;
+      minSpeed = speed;
+    }
+  }
+  SetHSSpeed(0, minSpeedIndex);
+  PrintInLog(log, "Horizontal Shift Speed is set to %gMHz", minSpeed);
+
+  minSpeedIndex = 0;
+  minSpeed = 0;
+
+  GetNumberVSSpeeds(&NumberOfSpeeds);
+  for (int j=0; j<NumberOfSpeeds; j++){
+    GetVSSpeed(j, &speed);
+    if (speed > minSpeed){
+      minSpeedIndex = j;
+      minSpeed = speed;
+    }
+  }
+  SetVSSpeed(minSpeedIndex);
+  PrintInLog(log, "Vertical Shift Speed is set to %gus", minSpeed);
 }
 
 void FitsInit(fitsfile** file){
