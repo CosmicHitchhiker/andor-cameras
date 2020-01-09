@@ -32,6 +32,7 @@ void Log::print(const char* message, ...) {
 	curr_time = localtime(&cur_time);
 	strftime(buffer,bufferSize,"%T %h %d ",curr_time);
 	file << buffer << ": ";
+	delete []buffer;
 
 	va_start(arglist, message);
 	string str = format(message, arglist);
