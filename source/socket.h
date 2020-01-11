@@ -6,6 +6,7 @@
 #include "log.h"
 #include <string>
 #include <cstring>
+#include <csignal>
 //#include <boost/algorithm/string.hpp>
 
 #ifndef SOCKET_H
@@ -14,10 +15,15 @@
 class Socket
 {
   public:
-	Socket(int port_number, Log* logFile);
+	Socket(int port_number, Log* logFile, int mode = 0);
 	~Socket();
 	std::string getMessage();
+	void sendMessage(char* message);
+	void answer(const char* message);
 	void turnOff();
+	static void myError(int);
+	int getMaxLen();
+	int getDescriptor();
 
   private:
   	int portNo;	// Номер порта
