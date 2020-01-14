@@ -12,6 +12,8 @@ Log::Log() {
 Log::Log(std::string fileName) {
 	name = fileName;
 	file.open(name, ios::app);
+    time_t curr_time = time(NULL);
+    file << "\n\n\nLog beginning " << ctime(&curr_time) << endl;
 }
 
 Log::~Log(){
