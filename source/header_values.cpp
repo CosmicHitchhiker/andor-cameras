@@ -38,8 +38,8 @@ void HeaderValues::parseString(std::string str){
 		buffer.insert(buffer.begin(), string("s"));
 	}
 
-	parsed.push_back(buffer.at(0));
-	parsed.push_back(buffer.at(1));
+	parsed.push_back(buffer.at(0));	// Тип
+	parsed.push_back(buffer.at(1)); // Ключ
 
 	// Если есть что-то кроме типа и ключа - ищем кавычки
 	int currWord = 2;
@@ -51,8 +51,8 @@ void HeaderValues::parseString(std::string str){
 				parsed.back() += buffer.at(currWord);
 				parsed.back() += " ";
 				if (buffer.at(currWord).back() == '\"') {
-					parsed.back().pop_back();
-					parsed.back().pop_back();
+					parsed.back().pop_back(); // Удаляем закрывающие кавычки
+					parsed.back().pop_back(); // Удаляем пробел
 					break;
 				}
 				currWord++;
@@ -67,18 +67,17 @@ void HeaderValues::parseString(std::string str){
 	while(currWord < buffer.size()){
 		parsed.back() += buffer.at(currWord);
 		parsed.back() += " ";
-		currWord++;
+		currWord++; // БЕГАЕМ ПОКА НЕ КОНЧИТСЯ СТРОКА!!!
 	}
 
-
-	this->addKey(parsed[1], parsed.at(0)[0], parsed[2], parsed[3]);
+	this->addKey(parsed.at(1), parsed.at(0)[0], parsed.at(2), parsed.at(3));
 }
 
 void HeaderValues::printAll(){
 	for (int i = 0; i < n; ++i)
 	{
 		cout << "Key: " << keys.at(i) << " ";
-		cout << "Value: " << values.at(i) << " ";
+		cout << "Value: " << values.at(i).c_str() << " ";
 		cout << "Comment: " << comments.at(i) << " ";
 		cout << "\n";
 	}
@@ -99,8 +98,8 @@ void HeaderValues::update(std::string filename) {
 			double val = stod(values.at(i));
 			fits_write_key(image, TDOUBLE, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 's'){
-			const char* val = values.at(i).c_str();
-			fits_write_key(image, TSTRING, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
+			char* val = (char *)values.at(i).c_str();
+			fits_write_key(image, TSTRING, keys.at(i).c_str(), val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'x'){
 			fits_delete_key(image, keys.at(i).c_str(), &status);
 		}

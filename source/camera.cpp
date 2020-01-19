@@ -11,22 +11,30 @@ Camera::Camera(bool isParent){
     model = Model;
 
     IsInternalMechanicalShutter(&isInternalShutter); // Checking existance of internal shutter
-
-    readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
-    acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
-    shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
-    readMode = 4;
-    acquisitionMode = 1;
-    exposureTime = 0.1;
-    shutterMode = 1;
-    shutterOpenT = 50;
-    shutterCloseT = 50;
+    GetDetector(&width, &height);
+    crop = {1,width,1,height};
     getShiftSpeedsInfo();
     hssNo = min_hss_No;
     vssNo = min_vss_No;
   }
-  
+  readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
+  acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
+  shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
+  readMode = 4;
+  acquisitionMode = 1;
+  exposureTime = 0.1;
+  shutterMode = 1;
+  shutterOpenTime = 50;
+  shutterCloseTime = 50;
+  hBin = 1;
+  vBin = 1;
+  dataType = 16;
+
+  prefix = "";
+  postfix = "";
+  writeDirectory = "";
 }
+
 
 void Camera::init(Log* logFile){
   log = logFile;
@@ -48,12 +56,12 @@ void Camera::init(Log* logFile){
   //Initialize Shutter
   if (isInternalShutter){
     // TTL to open is high (1), mode is fully-auto, time to open and close is about 50ms
-    SetShutter(shutterMode,0,50,50);
+    SetShutter(shutterMode,0,shutterOpenTime,shutterCloseTime);
     log->print("Internal shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   } else {
     // TTL to open is high (1), mode is fully-auto,
     // time to open and close is about 50ms, external shutter mode is fully-auto
-    SetShutterEx(shutterMode, 0, 50, 50, shutterMode);
+    SetShutterEx(shutterMode, 0, shutterOpenTime, shutterCloseTime, shutterMode);
     log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   }
 
@@ -63,6 +71,7 @@ void Camera::init(Log* logFile){
   SetVSSpeed(vssNo);
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 }
+
 
 void Camera::andorInit(){
   unsigned long error;
@@ -83,6 +92,7 @@ void Camera::andorInit(){
 
   sleep(2); //sleep to allow initialization to complete
 }
+
 
 void Camera::getShiftSpeedsInfo(){
   /* Заполняет hss и vss, min_hss_No и min_vss_No */
@@ -114,7 +124,81 @@ void Camera::getShiftSpeedsInfo(){
   }
 }
 
+
 string Camera::getModel(){
   return model;
 }
 
+
+void Camera::parseCommand(std::string message){
+  vector<string> buffer;
+  boost::split(buffer, message, boost::is_any_of(" \t\n\0"));
+  string command = buffer.at(0);
+  message.erase(0, command.length()+1);
+
+  if (command.compare("IMAG") == 0){
+    if (buffer.size() > 1) exposureTime = stof(buffer.at(1));
+    log->print("Exposure time is set to %g", exposureTime);
+    log->print("Getting image...");
+    image();
+  } else if (command.compare("HEAD") == 0) {
+    header.parseString(message);
+  }
+  // else if (command.compare("TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
+  // else if (command.compare("SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
+  // else if (command.compare("GET") == 0) { 
+  //   GetTemperatureF(&Tf); 
+  //   sprintf(message,"Temperature %6.2f\n",Tf);
+  //   PrintInLog(&log,message);
+  //   send(sock, message , strlen(message) , 0 ); 
+  // }
+}
+
+
+void Camera::image(){
+  SetImage(hBin,vBin,crop.at(0),crop.at(1),crop.at(2),crop.at(3));
+  SetExposureTime(exposureTime);
+  string name = fileName();
+
+  float exposure, accumulate, kinetic;
+  GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
+  log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
+  log->print("Starting acquisition");
+  StartAcquisition();
+
+  //Loop until acquisition finished
+  GetStatus(&status);
+  while(status == DRV_ACQUIRING){
+    GetStatus(&status);
+    sleep(1);
+  }
+  if (status != DRV_IDLE){
+    log->print("Error while acqiring data");
+    exit(1);
+  }
+  log->print("Image is acquired");
+
+  log->print("Saving file %s", name.c_str());
+
+  status = SaveAsFITS((char *)name.c_str(), 2);   // Save as fits with ANDOR metadata
+  if (status != DRV_SUCCESS){
+    log->print("Error while saving fits");
+    exit(1);
+  }
+  log->print("Draft fits is saved.");
+  header.update(name);  // Write additional header keys
+  log->print("Result fits is saved.");
+}
+
+
+std::string Camera::fileName(){
+  time_t cur_time = time(NULL);
+  struct tm *curr_time = gmtime(&cur_time);
+  char tfmt[50];
+  string img_time;
+  strftime(tfmt,50,"%Y%m%d%H%M%S",curr_time);
+  img_time = tfmt;
+  string result = writeDirectory + prefix + img_time + postfix + ".fits";
+  log->print("File name: %s", result.c_str());
+  return result;
+}

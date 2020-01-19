@@ -15,7 +15,7 @@
 class Socket
 {
   public:
-	Socket(int port_number, Log* logFile, int mode = 0);
+	Socket(int port_number, Log* logFile, int mode = 0); // mode == 0 - сервер, mode == 1 - клиент
 	~Socket();
 	std::string getMessage();
 	void sendMessage(char* message);

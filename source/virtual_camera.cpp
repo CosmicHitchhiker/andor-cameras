@@ -7,16 +7,8 @@ VirtualCamera::VirtualCamera() : Camera(false){
   model = Model;
 
   isInternalShutter = 0; // Checking existance of internal shutter
-
-  readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
-  acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
-  shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
-  readMode = 4;
-  acquisitionMode = 1;
-  exposureTime = 0.1;
-  shutterMode = 1;
-  shutterOpenT = 50;
-  shutterCloseT = 50;
+  width = 2048;
+  height = 512;
   getShiftSpeedsInfo();
   hssNo = min_hss_No;
   vssNo = min_vss_No;
@@ -81,4 +73,33 @@ void VirtualCamera::getShiftSpeedsInfo(){
       minSpeed = speed;
     }
   }
+}
+
+void VirtualCamera::image(){
+  string name = fileName();
+
+  float exposure, accumulate, kinetic;
+  exposure = exposureTime;
+  accumulate = exposureTime + height*width/hss.at(hssNo) + height*width*vss.at(vssNo)/1000.;
+  kinetic = accumulate;
+  log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
+  log->print("Starting acquisition");
+
+  fitsfile *infptr, *outfptr;   /* FITS file pointers defined in fitsio.h */
+  int fstatus = 0;       /* status must always be initialized = 0  */
+  fits_open_file(&infptr, "sample.fits", READONLY, &fstatus);
+  
+  sleep(exposureTime);
+  log->print("Image is acquired");
+
+  log->print("Saving file %s", name.c_str());
+
+  fits_create_file(&outfptr, (char *)name.c_str(), &fstatus);
+  fits_copy_file(infptr, outfptr, 1, 1, 1, &fstatus);
+  fits_close_file(outfptr,  &fstatus);
+  fits_close_file(infptr, &fstatus);
+
+  log->print("Draft fits is saved.");
+  header.update(name);  // Write additional header keys
+  log->print("Result fits is saved.");
 }

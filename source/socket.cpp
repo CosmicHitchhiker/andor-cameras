@@ -2,7 +2,7 @@
 
 using namespace std;
 
-Socket::Socket(int port_number, Log* logFile, int mode) {
+Socket::Socket(int port_number, Log* logFile, int mode) { // mode == 0 - сервер, mode == 1 - клиент
   signal(SIGSEGV, Socket::myError);   // Вывод ошибки в случае переполнения стека
   log = logFile;
   log->print("Socket initialization...");

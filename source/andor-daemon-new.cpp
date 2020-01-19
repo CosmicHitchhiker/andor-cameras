@@ -50,10 +50,17 @@ int Daemon(int argc, char* argv[]) {
 int Main(int argc, char* argv[]){
   VirtualCamera camera;
   string Model = camera.getModel();
-
   Log log(Model + ".log");
-
+  Socket sock(DEFAULT_PORT, &log);
   camera.init(&log);
 
+  string clientMessage = "";
+  while (clientMessage.compare("EXIT")){
+    clientMessage = "";
+    clientMessage = sock.getMessage();
+    camera.parseCommand(clientMessage);
+  }
+
+  sock.turnOff();
   return (0);
 }

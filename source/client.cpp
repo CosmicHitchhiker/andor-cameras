@@ -23,7 +23,6 @@ int main()
         fgets(message_c, msg_len, stdin);
         if (strcmp(message_c,"quit\n") == 0) break;
         sock.sendMessage(message_c);
-        cout << message_c;
         sock.turnOff();
     }
     return 0;
