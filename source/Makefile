@@ -9,13 +9,13 @@ client: client.o log.o socket.o
 #	g++ andor-daemon-new.o log.o socket.o header_values.o camera.o -o andor-daemon
 
 andor-daemon-test: andor-daemon-new.o log.o socket.o header_values.o camera.o virtual_camera.o
-	g++ -std=c++11 andor-daemon-new.o log.o socket.o header_values.o camera.o virtual_camera.o -o andor-daemon -landor -lcfitsio
+	g++ -std=c++11 andor-daemon-new.o log.o socket.o header_values.o camera.o virtual_camera.o -o andor-daemon -landor -lcfitsio -lconfig++
 
 client.o: client.cpp
 	g++ -std=c++11 -c client.cpp
 
 andor-daemon-new.o: andor-daemon-new.cpp
-	g++ -std=c++11 -c andor-daemon-new.cpp
+	g++ -std=c++11 -c andor-daemon-new.cpp -lconfig++
 
 log.o: log.cpp
 	g++ -std=c++11 -c log.cpp

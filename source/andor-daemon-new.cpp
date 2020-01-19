@@ -1,6 +1,7 @@
 #include "andor-daemon-new.h"
 
 using namespace std;
+using namespace libconfig;
 
 #define DEFAULT_PORT 1234
 
@@ -48,11 +49,19 @@ int Daemon(int argc, char* argv[]) {
 }
 
 int Main(int argc, char* argv[]){
-  Camera camera;
+  VirtualCamera camera;
   string Model = camera.getModel();
-  Log log(Model + ".log");
-  Socket sock(DEFAULT_PORT, &log);
-  camera.init(&log);
+  string logName = Model + ".log";
+  string iniName = Model + ".ini";
+
+  Log log(logName);
+  Config ini;
+
+  ini.readFile(iniName.c_str());
+  int port = ini.lookup("Port");
+
+  Socket sock(port, &log);
+  camera.init(&log, &ini);
 
   string clientMessage = "";
   while (clientMessage.compare("EXIT")){

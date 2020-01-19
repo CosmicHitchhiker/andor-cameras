@@ -13,3 +13,5 @@
 #include "socket.h"
 #include "camera.h"
 #include "virtual_camera.h"
+
+#include <libconfig.h++>

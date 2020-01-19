@@ -2,15 +2,19 @@
 #include <string>
 #include <vector>
 #include <boost/algorithm/string.hpp>
-// #include <functional>
+#include <ctime>
 #include <numeric>
+
 #include "atmcdLXd.h"
+#include <libconfig.h++>
+
 #include "log.h"
 #include "header_values.h"
-#include <ctime>
 
 #ifndef CAMERA_H
 #define CAMERA_H
+
+using namespace libconfig;
 
 
 class Camera
@@ -18,7 +22,7 @@ class Camera
   public:
     Camera(bool isParent = true);
     ~Camera(){}
-    virtual void init(Log* logFile);
+    virtual void init(Log* logFile, Config* ini);
     // virtual void setTemperature(int T);
     // virtual float getTemperature();
     // float getTargetTemperature();
@@ -32,6 +36,7 @@ class Camera
     virtual void setShutterMode();
     void andorInit();
     std::string fileName();
+    void readIni(Config *ini);
 
   protected:
     int status;
@@ -68,6 +73,7 @@ class Camera
 
     HeaderValues header;
     Log* log;
+    Config cfg;
 
     std::vector<std::string> readModes;
     std::vector<std::string> acquisitionModes;

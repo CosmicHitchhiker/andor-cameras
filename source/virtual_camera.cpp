@@ -1,6 +1,7 @@
 #include "virtual_camera.h"
 
 using namespace std;
+using namespace libconfig;
 
 VirtualCamera::VirtualCamera() : Camera(false){
   char* Model = (char *)"TEST_ANDOR";
@@ -18,7 +19,7 @@ VirtualCamera::VirtualCamera() : Camera(false){
   targetTemperature = int(temperature);
 }
 
-void VirtualCamera::init(Log* logFile){
+void VirtualCamera::init(Log* logFile, Config* ini){
   log = logFile;
 
   log->print("Camera %s is initialized.", model.c_str());
@@ -45,6 +46,8 @@ void VirtualCamera::init(Log* logFile){
   log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
 
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
+
+  readIni(ini);
 }
 
 void VirtualCamera::getShiftSpeedsInfo(){

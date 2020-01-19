@@ -1,6 +1,7 @@
 #include "camera.h"
 
 using namespace std;
+using namespace libconfig;
 
 Camera::Camera(bool isParent){
   if (isParent) {
@@ -42,7 +43,7 @@ Camera::Camera(bool isParent){
 }
 
 
-void Camera::init(Log* logFile){
+void Camera::init(Log* logFile, Config* ini){
   log = logFile;
 
   log->print("Camera %s is initialized.", model.c_str());
@@ -76,6 +77,8 @@ void Camera::init(Log* logFile){
 
   SetVSSpeed(vssNo);
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
+
+  readIni(ini);
 }
 
 
@@ -237,4 +240,47 @@ void Camera::setShutterMode(){
     SetShutterEx(1,shutterMode, shutterOpenTime, shutterCloseTime, shutterMode);
     log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   }
+}
+
+void Camera::readIni(Config *ini){
+  try {
+    targetTemperature = int(ini->lookup("Temperature"));
+  } catch(const SettingNotFoundException &nfex){
+    targetTemperature = temperature;
+  }
+
+  try {
+    string val = ini->lookup("Prefix");
+    prefix = val;
+  } catch(const SettingNotFoundException &nfex) {
+    prefix = "";
+  }
+
+  try {
+    string val = ini->lookup("Postfix");
+    postfix = val;
+  } catch(const SettingNotFoundException &nfex) {
+    postfix = "";
+  }
+
+  try {
+    string val = ini->lookup("Dir");
+    writeDirectory = val;
+  } catch(const SettingNotFoundException &nfex) {
+    writeDirectory = "";
+  }
+
+  log->print("LOL");
+
+  Setting &root = ini->getRoot();
+  try {
+    Setting &ini_header = root["Header"];
+    int n = ini_header.getLength();
+    for (int i = 0; i < n; ++i)
+    {
+      header.parseString(ini_header[i]);
+    }
+  } catch(const SettingNotFoundException &nfex) {
+  }
+
 }
