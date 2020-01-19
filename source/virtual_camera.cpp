@@ -12,6 +12,10 @@ VirtualCamera::VirtualCamera() : Camera(false){
   getShiftSpeedsInfo();
   hssNo = min_hss_No;
   vssNo = min_vss_No;
+  minT = -70;
+  maxT = -10;
+  temperature = 0.5;
+  targetTemperature = int(temperature);
 }
 
 void VirtualCamera::init(Log* logFile){
@@ -102,4 +106,28 @@ void VirtualCamera::image(){
   log->print("Draft fits is saved.");
   header.update(name);  // Write additional header keys
   log->print("Result fits is saved.");
+}
+
+
+void VirtualCamera::setTemperature(){
+  if (targetTemperature < minT) {
+    targetTemperature = minT;
+    log->print("Target temperature is set to %d", targetTemperature);
+  }
+  else if (targetTemperature > maxT) {
+    targetTemperature = maxT;
+    log->print("Target temperature is set to %d", targetTemperature);
+  }
+  temperature = targetTemperature;  
+}
+
+
+void VirtualCamera::setShutterMode(){
+  if (shutterMode > 4 || shutterMode < 0) shutterMode = 0;
+  if (isInternalShutter){
+    log->print("Internal shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
+  } else {
+    log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
+  }
+
 }

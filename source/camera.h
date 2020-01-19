@@ -28,6 +28,8 @@ class Camera
   protected:
     virtual void getShiftSpeedsInfo();
     virtual void image();
+    virtual void setTemperature();
+    virtual void setShutterMode();
     void andorInit();
     std::string fileName();
 
@@ -36,6 +38,7 @@ class Camera
 
     float temperature;
     int targetTemperature;
+    int minT, maxT;
 
     float exposureTime;
 

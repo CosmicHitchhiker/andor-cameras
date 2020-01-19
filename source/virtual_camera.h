@@ -16,6 +16,8 @@ class VirtualCamera : public Camera
   protected:
     void getShiftSpeedsInfo();
     void image();
+    void setTemperature();
+    void setShutterMode();
 };
 
 #endif // VIRTUAL_CAMERA_H

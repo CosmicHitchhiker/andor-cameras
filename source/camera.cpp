@@ -16,6 +16,12 @@ Camera::Camera(bool isParent){
     getShiftSpeedsInfo();
     hssNo = min_hss_No;
     vssNo = min_vss_No;
+
+    CoolerON();
+    GetTemperatureRange(&minT, &maxT);
+    GetTemperatureF(&temperature);
+    targetTemperature = int(temperature);
+    SetTemperature(targetTemperature);
   }
   readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
   acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
@@ -56,12 +62,12 @@ void Camera::init(Log* logFile){
   //Initialize Shutter
   if (isInternalShutter){
     // TTL to open is high (1), mode is fully-auto, time to open and close is about 50ms
-    SetShutter(shutterMode,0,shutterOpenTime,shutterCloseTime);
+    SetShutter(1,shutterMode,shutterOpenTime,shutterCloseTime);
     log->print("Internal shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   } else {
     // TTL to open is high (1), mode is fully-auto,
     // time to open and close is about 50ms, external shutter mode is fully-auto
-    SetShutterEx(shutterMode, 0, shutterOpenTime, shutterCloseTime, shutterMode);
+    SetShutterEx(1,shutterMode, shutterOpenTime, shutterCloseTime, shutterMode);
     log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   }
 
@@ -141,17 +147,23 @@ void Camera::parseCommand(std::string message){
     log->print("Exposure time is set to %g", exposureTime);
     log->print("Getting image...");
     image();
-  } else if (command.compare("HEAD") == 0) {
-    header.parseString(message);
   }
-  // else if (command.compare("TEMP") == 0) Temperature(atoi(strtok(NULL, " \n\0")));
-  // else if (command.compare("SHTR") == 0) Shutter(atoi(strtok(NULL, " \n\0")), &log);
-  // else if (command.compare("GET") == 0) { 
-  //   GetTemperatureF(&Tf); 
-  //   sprintf(message,"Temperature %6.2f\n",Tf);
-  //   PrintInLog(&log,message);
-  //   send(sock, message , strlen(message) , 0 ); 
-  // }
+  else if (command.compare("HEAD") == 0) {
+    log->print("Editing header");
+    header.parseString(message);
+  } 
+  else if (command.compare("TEMP") == 0) {
+    if (buffer.size() > 1) targetTemperature = stoi(message);
+    log->print("Target temperature is set to %d", targetTemperature);
+    setTemperature();
+  }
+  else if (command.compare("SHTR") == 0) {
+    if (buffer.size() > 1) shutterMode = stoi(message);
+    setShutterMode();
+  }
+  else {
+    log->print("Unknown command");
+  }
 }
 
 
@@ -201,4 +213,28 @@ std::string Camera::fileName(){
   string result = writeDirectory + prefix + img_time + postfix + ".fits";
   log->print("File name: %s", result.c_str());
   return result;
+}
+
+void Camera::setTemperature(){
+  if (targetTemperature < minT) {
+    targetTemperature = minT;
+    log->print("Target temperature is set to %d", targetTemperature);
+  }
+  else if (targetTemperature > maxT) {
+    targetTemperature = maxT;
+    log->print("Target temperature is set to %d", targetTemperature);
+  }
+  CoolerON();
+  SetTemperature(targetTemperature);
+}
+
+void Camera::setShutterMode(){
+  if (shutterMode > 4 || shutterMode < 0) shutterMode = 0;
+  if (isInternalShutter){
+    SetShutter(1,shutterMode,shutterOpenTime,shutterCloseTime);
+    log->print("Internal shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
+  } else {
+    SetShutterEx(1,shutterMode, shutterOpenTime, shutterCloseTime, shutterMode);
+    log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
+  }
 }
