@@ -26,6 +26,7 @@ class Camera
     std::string getModel();
     void parseCommand(std::string message);
     virtual void updateStatement();
+    virtual void endWork();
 
   protected:
     virtual void getShiftSpeedsInfo();
@@ -35,7 +36,6 @@ class Camera
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
-    virtual void endWork();
 
   protected:
     int status;

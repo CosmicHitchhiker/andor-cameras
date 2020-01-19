@@ -49,7 +49,7 @@ int Daemon(int argc, char* argv[]) {
 }
 
 int Main(int argc, char* argv[]){
-  VirtualCamera camera;
+  Camera camera;
   string Model = camera.getModel();
   string logName = Model + ".log";
   string iniName = Model + ".ini";
