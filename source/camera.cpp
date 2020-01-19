@@ -192,7 +192,7 @@ void Camera::image(){
 
   log->print("Saving file %s", name.c_str());
 
-  status = SaveAsFITS((char *)name.c_str(), 2);   // Save as fits with ANDOR metadata
+  status = SaveAsFITS((char *)name.c_str(), 0);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
     log->print("Error while saving fits");
     exit(1);
