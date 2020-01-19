@@ -81,7 +81,7 @@ void Camera::andorInit(){
   for (i = 0; i < NumberOfCameras; i++){
     GetCameraHandle(i, &CameraHandle);
     SetCurrentCamera(CameraHandle);
-    error = Initialize("/usr/local/etc/andor");
+    error = Initialize((char *)"/usr/local/etc/andor");
     if (error == DRV_SUCCESS) break;
   }
 

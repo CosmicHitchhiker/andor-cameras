@@ -48,7 +48,7 @@ int Daemon(int argc, char* argv[]) {
 }
 
 int Main(int argc, char* argv[]){
-  VirtualCamera camera;
+  Camera camera;
   string Model = camera.getModel();
   Log log(Model + ".log");
   Socket sock(DEFAULT_PORT, &log);

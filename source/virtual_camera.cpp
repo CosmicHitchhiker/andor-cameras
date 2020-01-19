@@ -3,7 +3,7 @@
 using namespace std;
 
 VirtualCamera::VirtualCamera() : Camera(false){
-  char* Model = "TEST_ANDOR";
+  char* Model = (char *)"TEST_ANDOR";
   model = Model;
 
   isInternalShutter = 0; // Checking existance of internal shutter
