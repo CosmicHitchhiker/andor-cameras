@@ -68,8 +68,10 @@ int Main(int argc, char* argv[]){
     clientMessage = "";
     clientMessage = sock.getMessage();
     camera.parseCommand(clientMessage);
+    camera.updateStatement();
   }
 
+  camera.endWork();
   sock.turnOff();
   return (0);
 }

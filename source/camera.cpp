@@ -10,6 +10,7 @@ Camera::Camera(bool isParent){
     char* Model = new char[40];
     GetHeadModel(Model);
     model = Model;
+    configName = model + ".info";
 
     IsInternalMechanicalShutter(&isInternalShutter); // Checking existance of internal shutter
     GetDetector(&width, &height);
@@ -28,9 +29,9 @@ Camera::Camera(bool isParent){
   acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
   shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
   readMode = 4;
-  acquisitionMode = 1;
+  acquisitionMode = 0;
   exposureTime = 0.1;
-  shutterMode = 1;
+  shutterMode = 0;
   shutterOpenTime = 50;
   shutterCloseTime = 50;
   hBin = 1;
@@ -40,6 +41,19 @@ Camera::Camera(bool isParent){
   prefix = "";
   postfix = "";
   writeDirectory = "";
+
+  Setting &root = cfg.getRoot();
+  root.add("Temperature", Setting::TypeFloat);
+  root.add("TargetT", Setting::TypeInt);
+  root.add("CoolingStatus", Setting::TypeString);
+  root.add("Shutter", Setting::TypeString);
+  // root.add("Acquisition", Setting::TypeString);
+  // root.add("Read", Setting::TypeString);
+  // root.add("Status", Setting::TypeString);
+  // root.add("Prefix", Setting::TypeString);
+  // root.add("Postfix", Setting::TypeString);
+  // root.add("Dir", Setting::TypeString);
+  // root.add("Acquisition", Setting::TypeString);
 }
 
 
@@ -79,6 +93,8 @@ void Camera::init(Log* logFile, Config* ini){
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
   readIni(ini);
+  setTemperature();
+  updateStatement();
 }
 
 
@@ -270,8 +286,6 @@ void Camera::readIni(Config *ini){
     writeDirectory = "";
   }
 
-  log->print("LOL");
-
   Setting &root = ini->getRoot();
   try {
     Setting &ini_header = root["Header"];
@@ -283,4 +297,47 @@ void Camera::readIni(Config *ini){
   } catch(const SettingNotFoundException &nfex) {
   }
 
+}
+
+
+void Camera::updateStatement(){
+  log->print("Updating statement...");
+  Setting &root = cfg.getRoot();
+
+  root["TargetT"] = targetTemperature;
+  root["Shutter"] = shutterModes.at(shutterMode);
+
+  temperatureStatus = (GetTemperatureF(&temperature));
+  root["Temperature"] = temperature;
+
+  switch(temperatureStatus){
+    case DRV_TEMP_STABILIZED:
+      root["CoolingStatus"] = "Temperature has stabilized at set point";
+      break;
+    case DRV_TEMP_NOT_REACHED:
+      root["CoolingStatus"] = "Temperature has not reached set point";
+      break;
+    case DRV_TEMP_DRIFT:
+      root["CoolingStatus"] = "Temperature had stabilised but has since drifted";
+      break;
+    case DRV_TEMP_NOT_STABILIZED:
+      root["CoolingStatus"] = "Temperature reached but not stabilized";
+      break;
+  }
+
+  cfg.writeFile(configName.c_str());
+}
+
+void Camera::endWork(){
+  log->print("Command loop exit");
+  targetTemperature = maxT;
+  setTemperature();
+  while(temperature < maxT - 1){
+    GetTemperatureF(&temperature);
+    updateStatement();
+    log->print("Temperature %g", temperature);
+    sleep(10);
+  }
+  CoolerOFF();
+  ShutDown();
 }

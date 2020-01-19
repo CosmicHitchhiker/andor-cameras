@@ -12,6 +12,8 @@ class VirtualCamera : public Camera
     VirtualCamera();
     ~VirtualCamera() {}
     void init(Log* logFile, Config* ini);
+    void updateStatement();
+    void endWork();
     // void setTemperature(int T);
     // float getTemperature();
 

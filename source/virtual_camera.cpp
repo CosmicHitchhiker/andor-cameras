@@ -6,6 +6,7 @@ using namespace libconfig;
 VirtualCamera::VirtualCamera() : Camera(false){
   char* Model = (char *)"TEST_ANDOR";
   model = Model;
+  configName = model + ".info";
 
   isInternalShutter = 0; // Checking existance of internal shutter
   width = 2048;
@@ -48,6 +49,7 @@ void VirtualCamera::init(Log* logFile, Config* ini){
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
   readIni(ini);
+  updateStatement();
 }
 
 void VirtualCamera::getShiftSpeedsInfo(){
@@ -121,7 +123,7 @@ void VirtualCamera::setTemperature(){
     targetTemperature = maxT;
     log->print("Target temperature is set to %d", targetTemperature);
   }
-  temperature = targetTemperature;  
+  temperature = targetTemperature; 
 }
 
 
@@ -132,5 +134,44 @@ void VirtualCamera::setShutterMode(){
   } else {
     log->print("External shutter is in '%s' mode.", shutterModes.at(shutterMode).c_str());
   }
+}
 
+void VirtualCamera::updateStatement(){
+  log->print("Updating statement...");
+  Setting &root = cfg.getRoot();
+
+  root["TargetT"] = targetTemperature;
+  root["Shutter"] = shutterModes.at(shutterMode);
+
+  temperatureStatus = DRV_TEMP_STABILIZED;
+  root["Temperature"] = temperature;
+
+  switch(temperatureStatus){
+    case DRV_TEMP_STABILIZED:
+      root["CoolingStatus"] = "Temperature has stabilized at set point";
+      break;
+    case DRV_TEMP_NOT_REACHED:
+      root["CoolingStatus"] = "Temperature has not reached set point";
+      break;
+    case DRV_TEMP_DRIFT:
+      root["CoolingStatus"] = "Temperature had stabilised but has since drifted";
+      break;
+    case DRV_TEMP_NOT_STABILIZED:
+      root["CoolingStatus"] = "Temperature reached but not stabilized";
+      break;
+  }
+
+  cfg.writeFile(configName.c_str());
+}
+
+void VirtualCamera::endWork(){
+  log->print("Command loop exit");
+  targetTemperature = maxT;
+  setTemperature();
+  while(temperature < maxT - 1){
+    temperature += 10;
+    updateStatement();
+    log->print("Temperature %g", temperature);
+    sleep(10);
+  }
 }

@@ -23,11 +23,9 @@ class Camera
     Camera(bool isParent = true);
     ~Camera(){}
     virtual void init(Log* logFile, Config* ini);
-    // virtual void setTemperature(int T);
-    // virtual float getTemperature();
-    // float getTargetTemperature();
     std::string getModel();
     void parseCommand(std::string message);
+    virtual void updateStatement();
 
   protected:
     virtual void getShiftSpeedsInfo();
@@ -37,6 +35,7 @@ class Camera
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
+    virtual void endWork();
 
   protected:
     int status;
@@ -44,6 +43,7 @@ class Camera
     float temperature;
     int targetTemperature;
     int minT, maxT;
+    unsigned int temperatureStatus;
 
     float exposureTime;
 
@@ -74,6 +74,7 @@ class Camera
     HeaderValues header;
     Log* log;
     Config cfg;
+    std::string configName;
 
     std::vector<std::string> readModes;
     std::vector<std::string> acquisitionModes;
