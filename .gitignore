@@ -12,3 +12,5 @@ client
 *.fits
 
 source/.info
+
+tests/TEST_ANDOR.info
