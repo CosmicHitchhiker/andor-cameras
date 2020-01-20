@@ -58,12 +58,15 @@ void Socket::turnOff(){
 
 std::string Socket::getMessage() {
   string msg;
+  if (msg_sock >= 0 ) {     // Закрываем предыдущее общение
+    log->print("Close previous connection");
+    close(msg_sock);
+  }
   while (true) {
     int bytes_read = 0;
-    if (msg_sock >= 0 ) {     // Закрываем предыдущее общение
-      close(msg_sock);
-    }
+
     char* message = new char[MESSAGE_LEN];
+    log->print("Accept listener");
     msg_sock = accept(listener, 0, 0);
     try {
       if(msg_sock < 0){
@@ -74,7 +77,9 @@ std::string Socket::getMessage() {
       if (message != NULL) delete []message;
       continue;
     }
+    log->print("Reciving message");
     bytes_read = recv(msg_sock, message, MESSAGE_LEN, 0);
+    log->print("Message recieved");
     if (! *message or message[0]=='\n' or message[0]=='\0' or bytes_read <= 0) {
       if (message != NULL) delete []message;
       continue;
