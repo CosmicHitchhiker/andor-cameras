@@ -101,7 +101,7 @@ void HeaderValues::update(std::string filename) {
 			char* val = (char *)values.at(i).c_str();
 			fits_update_key(image, TSTRING, keys.at(i).c_str(), val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'x'){
-			fits_update_key(image, keys.at(i).c_str(), &status);
+			fits_delete_key(image, keys.at(i).c_str(), &status);
 		}
 	}
 	fits_close_file(image, &status);
