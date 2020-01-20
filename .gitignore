@@ -4,3 +4,11 @@ tests/fits_and_cool
 andor-daemon
 
 client
+
+*.o
+
+*.log
+
+*.fits
+
+source/.info
