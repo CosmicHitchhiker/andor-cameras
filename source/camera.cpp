@@ -180,6 +180,18 @@ void Camera::parseCommand(std::string message){
     if (buffer.size() > 1) shutterMode = stoi(message);
     setShutterMode();
   }
+  else if (command.compare("PREF") == 0) {
+    if (buffer.size() > 1) prefix = buffer.at(1);
+    log->print("Prefix is set to %s", prefix.c_str());
+  }
+  else if (command.compare("SUFF") == 0) {
+    if (buffer.size() > 1) postfix = buffer.at(1);
+    log->print("Suffix is set to %s", postfix.c_str());
+  }
+  else if (command.compare("DIR") == 0) {
+    if (buffer.size() > 1) writeDirectory = buffer.at(1);
+    log->print("Target directory is set to %s", writeDirectory.c_str());
+  }
   else {
     log->print("Unknown command");
   }

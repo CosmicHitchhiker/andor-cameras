@@ -1,4 +1,4 @@
-#include "camera.h"
+#include "../source/camera.h"
 
 using namespace libconfig;
 

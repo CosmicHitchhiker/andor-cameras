@@ -10,3 +10,5 @@ client
 *.log
 
 *.fits
+
+source/.info
