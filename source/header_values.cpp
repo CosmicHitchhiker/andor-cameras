@@ -90,16 +90,16 @@ void HeaderValues::update(std::string filename) {
 	for (int i=0; i < n; i++){
 		if (types.at(i) == 'i'){
 			int val = stoi(values.at(i));
-			fits_write_key(image, TINT, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
+			fits_update_key(image, TINT, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'f'){
 			float val = stof(values.at(i));
-			fits_write_key(image, TFLOAT, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
+			fits_update_key(image, TFLOAT, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'd'){
 			double val = stod(values.at(i));
-			fits_write_key(image, TDOUBLE, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
+			fits_update_key(image, TDOUBLE, keys.at(i).c_str(), &val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 's'){
 			char* val = (char *)values.at(i).c_str();
-			fits_write_key(image, TSTRING, keys.at(i).c_str(), val, comments.at(i).c_str(), &status);
+			fits_update_key(image, TSTRING, keys.at(i).c_str(), val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'x'){
 			fits_delete_key(image, keys.at(i).c_str(), &status);
 		}

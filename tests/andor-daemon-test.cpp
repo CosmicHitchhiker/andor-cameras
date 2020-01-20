@@ -49,7 +49,7 @@ int Daemon(int argc, char* argv[]) {
 }
 
 int Main(int argc, char* argv[]){
-  Camera camera;
+  VirtualCamera camera;
   string Model = camera.getModel();
   string logName = Model + ".log";
   string iniName = Model + ".ini";
@@ -66,6 +66,7 @@ int Main(int argc, char* argv[]){
   string clientMessage = "";
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
+    log.print("Getting message...");
     clientMessage = sock.getMessage();
     camera.parseCommand(clientMessage);
     camera.updateStatement();
