@@ -198,7 +198,10 @@ void Camera::parseCommand(std::string message){
     log->print("Suffix is set to %s", postfix.c_str());
   }
   else if (command.compare("DIR") == 0) {
-    if (buffer.size() > 1) writeDirectory = buffer.at(1);
+    if (buffer.size() > 1){
+      writeDirectory = buffer.at(1);
+      if (writeDirectory.back() != '/') writeDirectory += "/";
+    }
     log->print("Target directory is set to %s", writeDirectory.c_str());
   }
   else if (command.compare("BIN") == 0) {
