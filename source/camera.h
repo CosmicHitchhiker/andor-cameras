@@ -37,6 +37,7 @@ class Camera
     std::string fileName();
     void readIni(Config *ini);
     void bin(int hbin, int vbin);
+    void speed(std::string Sp);
 
   protected:
     int status;
@@ -56,8 +57,10 @@ class Camera
 
     int hssNo;
     int min_hss_No;
+    int max_hss_No;
     int vssNo;
     int min_vss_No;
+    int max_vss_No;
 
     int readMode;
     int acquisitionMode;

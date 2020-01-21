@@ -123,7 +123,7 @@ void Camera::getShiftSpeedsInfo(){
   /* Заполняет hss и vss, min_hss_No и min_vss_No */
   int NumberOfSpeeds;
   min_hss_No=0;
-  float speed, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
+  float speed, maxSpeed=0; minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
 
   GetNumberHSSpeeds(0, 0, &NumberOfSpeeds);
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -133,10 +133,15 @@ void Camera::getShiftSpeedsInfo(){
       min_hss_No = j;
       minSpeed = speed;
     }
+    if (speed > maxSpeed){
+      maxSpeed = speed;
+      max_hss_No = j;
+    }
   }
 
   min_vss_No = 0;
   minSpeed = 0;   // minSpeed в мкс, поэтому ставим заведомо маленькое значение
+  maxSpeed = 10000;
 
   GetNumberVSSpeeds(&NumberOfSpeeds);
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -145,6 +150,10 @@ void Camera::getShiftSpeedsInfo(){
     if (speed > minSpeed){
       min_vss_No = j;
       minSpeed = speed;
+    }
+    if (speed < maxSpeed){
+      max_vss_No = j;
+      maxSpeed = speed;
     }
   }
 }
@@ -194,6 +203,9 @@ void Camera::parseCommand(std::string message){
   }
   else if (command.compare("BIN") == 0) {
     if (buffer.size() > 2) bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+  }
+  else if (command.compare("SPEED") == 0) {
+    if (buffer.size() > 1) speed(buffer.at(1));
   }
   else if (command.compare("EXIT") == 0) {
     updateStatement();
@@ -354,6 +366,17 @@ void Camera::updateStatement(){
   SetVSSpeed(vssNo);
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
+}
+
+void Camera::speed(string sp){
+  if (sp.compare("MAX") == 0) hssNo = max_hss_No;
+  else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
+  else {
+    N = stoi(sp);
+    if (N >= 0 and N <= hss.size()) hssNo = N;
+  }
+  SetHSSpeed(0, hssNo);
+  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
 }
 
 void Camera::endWork(){
