@@ -123,7 +123,7 @@ void Camera::getShiftSpeedsInfo(){
   /* Заполняет hss и vss, min_hss_No и min_vss_No */
   int NumberOfSpeeds;
   min_hss_No=0;
-  float speed, maxSpeed=0; minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
+  float speed, maxSpeed=0, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
 
   GetNumberHSSpeeds(0, 0, &NumberOfSpeeds);
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -372,7 +372,7 @@ void Camera::speed(string sp){
   if (sp.compare("MAX") == 0) hssNo = max_hss_No;
   else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
   else {
-    N = stoi(sp);
+    int N = stoi(sp);
     if (N >= 0 and N <= hss.size()) hssNo = N;
   }
   SetHSSpeed(0, hssNo);
