@@ -192,6 +192,12 @@ void Camera::parseCommand(std::string message){
     if (buffer.size() > 1) writeDirectory = buffer.at(1);
     log->print("Target directory is set to %s", writeDirectory.c_str());
   }
+  else if (command.compare("BIN") == 0) {
+    if (buffer.size() > 2) bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+  }
+  else if (command.compare("EXIT") == 0) {
+    updateStatement();
+  }
   else {
     log->print("Unknown command");
   }
@@ -338,6 +344,16 @@ void Camera::updateStatement(){
   }
 
   cfg.writeFile(configName.c_str());
+
+  getShiftSpeedsInfo();
+  hssNo = min_hss_No;
+  vssNo = min_vss_No;
+  SetHSSpeed(0, hssNo);
+  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
+
+  SetVSSpeed(vssNo);
+  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
+
 }
 
 void Camera::endWork(){
@@ -352,4 +368,11 @@ void Camera::endWork(){
   }
   CoolerOFF();
   ShutDown();
+}
+
+
+void Camera::bin(int hbin, int vbin) {
+  hBin = hbin;
+  vBin = vbin;
+  log->print("Set bin: horizontal = %d, vertical = %d", hBin, vBin);
 }

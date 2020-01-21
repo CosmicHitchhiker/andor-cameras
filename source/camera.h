@@ -36,6 +36,7 @@ class Camera
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
+    void bin(int hbin, int vbin);
 
   protected:
     int status;
