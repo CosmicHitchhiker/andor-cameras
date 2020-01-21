@@ -12,3 +12,7 @@ client
 *.fits
 
 source/.info
+
+tests/andor-daemon-test
+
+tests/TEST_ANDOR.info
