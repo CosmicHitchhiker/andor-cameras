@@ -20,7 +20,7 @@ andor-daemon-test: andor-daemon-test.o log.o socket.o header_values.o camera.o v
 andor-daemon-test.o: $(TEST)andor-daemon-test.cpp
 	g++ -std=c++11 -c $(TEST)andor-daemon-test.cpp -o $(TEST)andor-daemon-test.o
 
-virtual_camera.o:
+virtual_camera.o: $(TEST)virtual_camera.cpp $(TEST)virtual_camera.h
 	g++ -std=c++11 -c $(TEST)virtual_camera.cpp -o $(TEST)virtual_camera.o
 
 client.o: client.cpp
@@ -32,13 +32,13 @@ andor-daemon-new.o: andor-daemon-new.cpp
 log.o: log.cpp
 	g++ -std=c++11 -c log.cpp
 
-socket.o: socket.cpp
+socket.o: socket.cpp socket.h
 	g++ -std=c++11 -c socket.cpp
 
-header_values.o:
+header_values.o: header_values.cpp header_values.h
 	g++ -std=c++11 -c header_values.cpp
 
-camera.o:
+camera.o: camera.cpp camera.h
 	g++ -std=c++11 -c camera.cpp
 
 clean:

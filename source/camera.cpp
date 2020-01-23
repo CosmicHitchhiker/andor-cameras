@@ -25,7 +25,7 @@ Camera::Camera(bool isParent){
     targetTemperature = int(temperature);
     SetTemperature(targetTemperature);
   }
-  readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
+  readModes = {"Full Vertical Binning", "Multi-Track", "Random-Track", "Single-Track", "Image"};
   acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
   shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
   readMode = 4;
@@ -123,7 +123,7 @@ void Camera::getShiftSpeedsInfo(){
   /* Заполняет hss и vss, min_hss_No и min_vss_No */
   int NumberOfSpeeds;
   min_hss_No=0;
-  float speed, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
+  float speed, maxSpeed=0, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
 
   GetNumberHSSpeeds(0, 0, &NumberOfSpeeds);
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -133,10 +133,15 @@ void Camera::getShiftSpeedsInfo(){
       min_hss_No = j;
       minSpeed = speed;
     }
+    if (speed > maxSpeed){
+      maxSpeed = speed;
+      max_hss_No = j;
+    }
   }
 
   min_vss_No = 0;
   minSpeed = 0;   // minSpeed в мкс, поэтому ставим заведомо маленькое значение
+  maxSpeed = 10000;
 
   GetNumberVSSpeeds(&NumberOfSpeeds);
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -145,6 +150,10 @@ void Camera::getShiftSpeedsInfo(){
     if (speed > minSpeed){
       min_vss_No = j;
       minSpeed = speed;
+    }
+    if (speed < maxSpeed){
+      max_vss_No = j;
+      maxSpeed = speed;
     }
   }
 }
@@ -189,8 +198,23 @@ void Camera::parseCommand(std::string message){
     log->print("Suffix is set to %s", postfix.c_str());
   }
   else if (command.compare("DIR") == 0) {
-    if (buffer.size() > 1) writeDirectory = buffer.at(1);
+    if (buffer.size() > 1){
+      writeDirectory = buffer.at(1);
+      if (writeDirectory.back() != '/') writeDirectory += "/";
+    }
     log->print("Target directory is set to %s", writeDirectory.c_str());
+  }
+  else if (command.compare("BIN") == 0) {
+    if (buffer.size() > 2) bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+  }
+  else if (command.compare("SPEED") == 0) {
+    if (buffer.size() > 1) speed(buffer.at(1));
+  }
+  else if (command.compare("VSPEED") == 0) {
+    if (buffer.size() > 1) vspeed(buffer.at(1));
+  }
+  else if (command.compare("EXIT") == 0) {
+    updateStatement();
   }
   else {
     log->print("Unknown command");
@@ -226,7 +250,7 @@ void Camera::image(){
   status = SaveAsFITS((char *)name.c_str(), 0);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
     log->print("Error while saving fits");
-    exit(1);
+//    exit(1);
   }
   log->print("Draft fits is saved.");
   header.update(name);  // Write additional header keys
@@ -338,6 +362,37 @@ void Camera::updateStatement(){
   }
 
   cfg.writeFile(configName.c_str());
+/*  getShiftSpeedsInfo();
+  hssNo = min_hss_No;
+  vssNo = min_vss_No;
+  SetHSSpeed(0, hssNo);
+  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
+
+  SetVSSpeed(vssNo);
+  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
+*/
+}
+
+void Camera::speed(string sp){
+  if (sp.compare("MAX") == 0) hssNo = max_hss_No;
+  else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
+  else {
+    int N = stoi(sp);
+    if (N >= 0 and N < hss.size()) hssNo = N;
+  }
+  SetHSSpeed(0, hssNo);
+  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
+}
+
+void Camera::vspeed(string sp){
+  if (sp.compare("MAX") == 0) vssNo = max_vss_No;
+  else if (sp.compare("MIN") == 0) vssNo = min_vss_No;
+  else {
+    int N = stoi(sp);
+    if (N >= 0 and N < vss.size()) vssNo = N;
+  }
+  SetVSSpeed(vssNo);
+  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 }
 
 void Camera::endWork(){
@@ -352,4 +407,11 @@ void Camera::endWork(){
   }
   CoolerOFF();
   ShutDown();
+}
+
+
+void Camera::bin(int hbin, int vbin) {
+  hBin = hbin;
+  vBin = vbin;
+  log->print("Set bin: horizontal = %d, vertical = %d", hBin, vBin);
 }
