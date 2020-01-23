@@ -38,6 +38,7 @@ class Camera
     void readIni(Config *ini);
     void bin(int hbin, int vbin);
     void speed(std::string Sp);
+    void vspeed(std::string Sp);
 
   protected:
     int status;

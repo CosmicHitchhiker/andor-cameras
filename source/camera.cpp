@@ -25,7 +25,7 @@ Camera::Camera(bool isParent){
     targetTemperature = int(temperature);
     SetTemperature(targetTemperature);
   }
-  readModes = {"Full Vertical Binnig", "Multi-Track", "Random-Track", "Single-Track", "Image"};
+  readModes = {"Full Vertical Binning", "Multi-Track", "Random-Track", "Single-Track", "Image"};
   acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
   shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
   readMode = 4;
@@ -210,6 +210,9 @@ void Camera::parseCommand(std::string message){
   else if (command.compare("SPEED") == 0) {
     if (buffer.size() > 1) speed(buffer.at(1));
   }
+  else if (command.compare("VSPEED") == 0) {
+    if (buffer.size() > 1) vspeed(buffer.at(1));
+  }
   else if (command.compare("EXIT") == 0) {
     updateStatement();
   }
@@ -247,7 +250,7 @@ void Camera::image(){
   status = SaveAsFITS((char *)name.c_str(), 0);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
     log->print("Error while saving fits");
-    exit(1);
+//    exit(1);
   }
   log->print("Draft fits is saved.");
   header.update(name);  // Write additional header keys
@@ -359,8 +362,7 @@ void Camera::updateStatement(){
   }
 
   cfg.writeFile(configName.c_str());
-
-  getShiftSpeedsInfo();
+/*  getShiftSpeedsInfo();
   hssNo = min_hss_No;
   vssNo = min_vss_No;
   SetHSSpeed(0, hssNo);
@@ -368,7 +370,7 @@ void Camera::updateStatement(){
 
   SetVSSpeed(vssNo);
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
-
+*/
 }
 
 void Camera::speed(string sp){
@@ -376,10 +378,21 @@ void Camera::speed(string sp){
   else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
   else {
     int N = stoi(sp);
-    if (N >= 0 and N <= hss.size()) hssNo = N;
+    if (N >= 0 and N < hss.size()) hssNo = N;
   }
   SetHSSpeed(0, hssNo);
   log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
+}
+
+void Camera::vspeed(string sp){
+  if (sp.compare("MAX") == 0) vssNo = max_vss_No;
+  else if (sp.compare("MIN") == 0) vssNo = min_vss_No;
+  else {
+    int N = stoi(sp);
+    if (N >= 0 and N < vss.size()) vssNo = N;
+  }
+  SetVSSpeed(vssNo);
+  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 }
 
 void Camera::endWork(){
