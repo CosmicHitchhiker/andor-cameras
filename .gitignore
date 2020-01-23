@@ -16,3 +16,5 @@ source/.info
 tests/TEST_ANDOR.info
 
 tests/andor-daemon-test
+
+tests/socket_test
