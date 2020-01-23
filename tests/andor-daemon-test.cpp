@@ -64,12 +64,29 @@ int Main(int argc, char* argv[]){
   camera.init(&log, &ini);
 
   string clientMessage = "";
+  string serverMessage = "";
+
+  float timeSleep = 0.5;
+  while (! sock.acceptConnection()){
+    sleep(timeSleep);
+  }
+  log.print("Client connected");
+
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
-    log.print("Getting message...");
-    clientMessage = sock.getMessage();
-    camera.parseCommand(clientMessage);
+    while (! sock.getMessage(&clientMessage)){
+      if (! sock.checkClient()){
+        log.print("Client is disconnected");
+        while (! sock.acceptConnection()){
+          sleep(timeSleep);
+        }
+        log.print("Connected");
+      }
+      sleep(timeSleep);
+    }
+    serverMessage = camera.parseCommand(clientMessage);
     camera.updateStatement();
+    sock.answer(serverMessage.c_str());
   }
 
   camera.endWork();

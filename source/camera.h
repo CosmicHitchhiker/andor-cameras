@@ -24,7 +24,7 @@ class Camera
     ~Camera(){}
     virtual void init(Log* logFile, Config* ini);
     std::string getModel();
-    void parseCommand(std::string message);
+    std::string parseCommand(std::string message);
     virtual void updateStatement();
     virtual void endWork();
 

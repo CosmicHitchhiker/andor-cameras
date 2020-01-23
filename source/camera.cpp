@@ -164,7 +164,7 @@ string Camera::getModel(){
 }
 
 
-void Camera::parseCommand(std::string message){
+std::string Camera::parseCommand(std::string message){
   vector<string> buffer;
   boost::split(buffer, message, boost::is_any_of(" \t\n\0"));
   string command = buffer.at(0);
@@ -175,27 +175,33 @@ void Camera::parseCommand(std::string message){
     log->print("Exposure time is set to %g", exposureTime);
     log->print("Getting image...");
     image();
+    return string("Image acquired\n");
   }
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
     header.parseString(message);
+    return string("Header key is updated\n");
   } 
   else if (command.compare("TEMP") == 0) {
     if (buffer.size() > 1) targetTemperature = stoi(message);
     log->print("Target temperature is set to %d", targetTemperature);
     setTemperature();
+    return string("New target temperature is set\n");
   }
   else if (command.compare("SHTR") == 0) {
     if (buffer.size() > 1) shutterMode = stoi(message);
     setShutterMode();
+    return string("Shutter mode is set\n");
   }
   else if (command.compare("PREF") == 0) {
     if (buffer.size() > 1) prefix = buffer.at(1);
     log->print("Prefix is set to %s", prefix.c_str());
+    return string("Prefix is set\n");
   }
   else if (command.compare("SUFF") == 0) {
     if (buffer.size() > 1) postfix = buffer.at(1);
     log->print("Suffix is set to %s", postfix.c_str());
+    return string("Suffix is set\n");
   }
   else if (command.compare("DIR") == 0) {
     if (buffer.size() > 1){
@@ -203,21 +209,30 @@ void Camera::parseCommand(std::string message){
       if (writeDirectory.back() != '/') writeDirectory += "/";
     }
     log->print("Target directory is set to %s", writeDirectory.c_str());
+    return string("Target directory is set\n");
   }
   else if (command.compare("BIN") == 0) {
     if (buffer.size() > 2) bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+    return string("Binning is set\n");
   }
   else if (command.compare("SPEED") == 0) {
     if (buffer.size() > 1) speed(buffer.at(1));
+    return string("HSS speed is set\n");
   }
   else if (command.compare("VSPEED") == 0) {
     if (buffer.size() > 1) vspeed(buffer.at(1));
+    return string("VSS speed is set\n");
+  }
+  else if (command.compare("GET") == 0) {
+    updateStatement();
+    return string("T =")+to_string(temperature)+"\n";
   }
   else if (command.compare("EXIT") == 0) {
-    updateStatement();
+    return string("Starting exit procedure\n");
   }
   else {
     log->print("Unknown command");
+    return string("Unknown command\n");
   }
 }
 
@@ -362,15 +377,6 @@ void Camera::updateStatement(){
   }
 
   cfg.writeFile(configName.c_str());
-/*  getShiftSpeedsInfo();
-  hssNo = min_hss_No;
-  vssNo = min_vss_No;
-  SetHSSpeed(0, hssNo);
-  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
-
-  SetVSSpeed(vssNo);
-  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
-*/
 }
 
 void Camera::speed(string sp){

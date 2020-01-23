@@ -66,9 +66,19 @@ int Main(int argc, char* argv[]){
   string clientMessage = "";
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
-    clientMessage = sock.getMessage();
-    camera.parseCommand(clientMessage);
+    while (! sock.getMessage(&clientMessage)){
+      if (! sock.checkClient()){
+        log.print("Client is disconnected");
+        while (! sock.acceptConnection()){
+          sleep(timeSleep);
+        }
+        log.print("Connected");
+      }
+      sleep(timeSleep);
+    }
+    serverMessage = camera.parseCommand(clientMessage);
     camera.updateStatement();
+    sock.answer(serverMessage.c_str());
   }
 
   camera.endWork();

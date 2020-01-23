@@ -19,6 +19,8 @@ Log::Log(std::string fileName) {
 Log::~Log(){
 	time_t cur_time = time(NULL);
     file << format("\nLog ending %s\n", ctime(&cur_time));
+    file << "=======================================";
+    file << "=======================================\n";
 	file.close();
 }
 
