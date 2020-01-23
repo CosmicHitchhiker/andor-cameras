@@ -64,6 +64,14 @@ int Main(int argc, char* argv[]){
   camera.init(&log, &ini);
 
   string clientMessage = "";
+  string serverMessage = "";
+
+  float timeSleep = 0.5;
+  while (! sock.acceptConnection()){
+    sleep(timeSleep);
+  }
+  log.print("Client connected");
+  
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
     while (! sock.getMessage(&clientMessage)){
