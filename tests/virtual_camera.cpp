@@ -49,6 +49,7 @@ void VirtualCamera::init(Log* logFile, Config* ini){
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
   readIni(ini);
+  setTemperature();
   updateStatement();
 }
 
@@ -58,7 +59,7 @@ void VirtualCamera::getShiftSpeedsInfo(){
   vector<float> vss_virt = {14, 34, 54}; 
   int NumberOfSpeeds;
   min_hss_No=0;
-  float speed, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
+  float speed, maxSpeed=0, minSpeed=1000;   // minSpeed в МГц, поэтому ставим заведомо большое число
 
   NumberOfSpeeds = hss_virt.size();
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -68,10 +69,15 @@ void VirtualCamera::getShiftSpeedsInfo(){
       min_hss_No = j;
       minSpeed = speed;
     }
+    if (speed > maxSpeed){
+      maxSpeed = speed;
+      max_hss_No = j;
+    }
   }
 
   min_vss_No = 0;
   minSpeed = 0;   // minSpeed в мкс, поэтому ставим заведомо маленькое значение
+  maxSpeed = 10000;
 
   NumberOfSpeeds = vss_virt.size();
   for (int j=0; j < NumberOfSpeeds; j++){
@@ -80,6 +86,10 @@ void VirtualCamera::getShiftSpeedsInfo(){
     if (speed > minSpeed){
       min_vss_No = j;
       minSpeed = speed;
+    }
+    if (speed < maxSpeed){
+      max_vss_No = j;
+      maxSpeed = speed;
     }
   }
 }
@@ -162,6 +172,26 @@ void VirtualCamera::updateStatement(){
   }
 
   cfg.writeFile(configName.c_str());
+}
+
+void VirtualCamera::speed(std::string sp){
+  if (sp.compare("MAX") == 0) hssNo = max_hss_No;
+  else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
+  else {
+    int N = stoi(sp);
+    if (N >= 0 and N < hss.size()) hssNo = N;
+  }
+  log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
+}
+
+void VirtualCamera::vspeed(std::string sp){
+  if (sp.compare("MAX") == 0) vssNo = max_vss_No;
+  else if (sp.compare("MIN") == 0) vssNo = min_vss_No;
+  else {
+    int N = stoi(sp);
+    if (N >= 0 and N < vss.size()) vssNo = N;
+  }
+  log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 }
 
 void VirtualCamera::endWork(){
