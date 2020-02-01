@@ -70,8 +70,9 @@ std::string HeaderValues::parseString(std::string str){
 		currWord++; // БЕГАЕМ ПОКА НЕ КОНЧИТСЯ СТРОКА!!!
 	}
 
+	checkType(parsed.at(0)[0], parsed.at(2));
 	this->addKey(parsed.at(1), parsed.at(0)[0], parsed.at(2), parsed.at(3));
-	std::string retval = std::string("KEY=")+parsed.at(1)+" TYPE="+parsed.at(0)[0]+" VALUE=";
+	string retval = string("KEY=")+parsed.at(1)+" TYPE="+parsed.at(0)[0]+" VALUE=";
 	if (parsed.at(0)[0]=='s') retval += '\'';
 	retval += parsed.at(2);
 	if (parsed.at(0)[0]=='s') retval += '\'';
@@ -113,4 +114,17 @@ void HeaderValues::update(std::string filename) {
 	fits_close_file(image, &status);
 }
 
-// i KEY "VA LU E" COMMENT
+void HeaderValues::checkType(char type, string value){
+	/* Эта функция вызовет исключение, если тип некорректен */
+	// try {
+		if (type == 'i'){
+			int val = stoi(value);
+		} else if (type == 'f'){
+			float val = stof(value);
+		} else if (type == 'd'){
+			double val = stod(value);
+		} else if (type == 's'){
+			char* val = (char *)value.c_str();
+		}
+	// }
+}

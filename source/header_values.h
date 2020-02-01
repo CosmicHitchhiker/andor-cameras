@@ -16,6 +16,7 @@ class HeaderValues
 	std::string parseString(std::string str);
 	void printAll();
 	void update(std::string filename);
+  void checkType(char type, std::string value);
 
   private:
   	int n; // Количество ключей для добавления

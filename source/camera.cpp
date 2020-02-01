@@ -179,8 +179,13 @@ std::string Camera::parseCommand(std::string message){
   }
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
-    std::string htvp = header.parseString(message);
-    return string("OK ")+htvp+'\n';
+    try {
+      std::string htvp = header.parseString(message);
+      return string("OK ")+htvp+'\n';
+    } catch(...) {
+      log->print("ERROR Does value match type?");
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
   } 
   else if (command.compare("TEMP") == 0) {
     if (buffer.size() > 1) targetTemperature = stoi(message);
