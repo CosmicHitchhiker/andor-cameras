@@ -13,7 +13,7 @@ class HeaderValues
 	HeaderValues();
 	~HeaderValues();
 	void addKey(std::string key, char type = 's', std::string value = "", std::string comment = "");
-	void parseString(std::string str);
+	std::string parseString(std::string str);
 	void printAll();
 	void update(std::string filename);
 
