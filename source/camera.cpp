@@ -183,25 +183,35 @@ std::string Camera::parseCommand(std::string message){
     return string("OK ")+htvp+'\n';
   } 
   else if (command.compare("TEMP") == 0) {
-    if (buffer.size() > 1) targetTemperature = stoi(message);
+    if (buffer.size() > 1) try {
+      targetTemperature = stoi(message);
+    } catch(...) {
+      log->print("ERROR Invalid argument ", buffer.at(1)," must be integer");
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
     log->print("Target temperature is set to %d", targetTemperature);
     setTemperature();
-    return string("New target temperature is set\n");
+    return string("OK TEMP=")+to_string(targetTemperature)+'\n';
   }
   else if (command.compare("SHTR") == 0) {
-    if (buffer.size() > 1) shutterMode = stoi(message);
+    if (buffer.size() > 1) try {
+      shutterMode = stoi(message);
+    } catch(...) {
+      log->print("ERROR Invalid argument ", buffer.at(1)," must be integer");
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
     setShutterMode();
-    return string("Shutter mode is set\n");
+    return string("OK SHTR=")+to_string(shutterMode)+'\n';
   }
   else if (command.compare("PREF") == 0) {
     if (buffer.size() > 1) prefix = buffer.at(1);
     log->print("Prefix is set to %s", prefix.c_str());
-    return string("Prefix is set\n");
+    return string("OK PREF=")+prefix+'\n';
   }
   else if (command.compare("SUFF") == 0) {
     if (buffer.size() > 1) postfix = buffer.at(1);
     log->print("Suffix is set to %s", postfix.c_str());
-    return string("Suffix is set\n");
+    return string("OK SUFF=")+postfix+'\n';
   }
   else if (command.compare("DIR") == 0) {
     if (buffer.size() > 1){
@@ -209,30 +219,35 @@ std::string Camera::parseCommand(std::string message){
       if (writeDirectory.back() != '/') writeDirectory += "/";
     }
     log->print("Target directory is set to %s", writeDirectory.c_str());
-    return string("Target directory is set\n");
+    return string("OK DIR=")+writeDirectory+'\n';
   }
   else if (command.compare("BIN") == 0) {
-    if (buffer.size() > 2) bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
-    return string("Binning is set\n");
+    if (buffer.size() > 2) try {
+      bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+    } catch(...) {
+      log->print("ERROR Invalid argument", buffer.at(1),' ', buffer.at(2)," must be integers");
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
+    return string("OK BIN=\'")+to_string(hBin)+' '+to_string(vBin)+"\'\n";
   }
   else if (command.compare("SPEED") == 0) {
-    if (buffer.size() > 1) speed(buffer.at(1));
-    return string("HSS speed is set\n");
+    if (buffer.size() > 1) speed(buffer.at(1));    
+    return string("OK SPEED=")+to_string(hssNo)+" HSS="+to_string(hss.at(hssNo))+'\n';
   }
   else if (command.compare("VSPEED") == 0) {
     if (buffer.size() > 1) vspeed(buffer.at(1));
-    return string("VSS speed is set\n");
+    return string("OK VSPEED=")+to_string(vssNo)+" VSS="+to_string(vss.at(vssNo))+'\n';
   }
   else if (command.compare("GET") == 0) {
     updateStatement();
     return string("T =")+to_string(temperature)+"\n";
   }
   else if (command.compare("EXIT") == 0) {
-    return string("Starting exit procedure\n");
+    return string("OK STATUS=EXIT_PROCEDURE_STARTED\n");
   }
   else {
     log->print("Unknown command");
-    return string("Unknown command\n");
+    return string("ERROR STATUS=BAD_COMMAND\n");
   }
 }
 
