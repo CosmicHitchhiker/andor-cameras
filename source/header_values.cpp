@@ -22,7 +22,7 @@ void HeaderValues::addKey(std::string key, char type, std::string value, std::st
 	comments.push_back(comment);
 }
 
-void HeaderValues::parseString(std::string str){
+std::string HeaderValues::parseString(std::string str){
 	vector<string> buffer;
 	vector<string> parsed;
 	boost::split(buffer, str, boost::is_any_of(" \t\n\0"));
@@ -71,6 +71,12 @@ void HeaderValues::parseString(std::string str){
 	}
 
 	this->addKey(parsed.at(1), parsed.at(0)[0], parsed.at(2), parsed.at(3));
+	std::string retval = std::string("KEY=")+parsed.at(1)+" TYPE="+parsed.at(0)[0]+" VALUE=";
+	if (parsed.at(0)[0]=='s') retval += '\'';
+	retval += parsed.at(2);
+	if (parsed.at(0)[0]=='s') retval += '\'';
+	retval += " COMMENT=\'"+parsed.at(3)+'\'';
+	return retval;
 }
 
 void HeaderValues::printAll(){

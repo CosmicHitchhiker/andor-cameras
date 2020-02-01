@@ -179,8 +179,8 @@ std::string Camera::parseCommand(std::string message){
   }
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
-    header.parseString(message);
-    return string("Header key is updated\n");
+    std::string htvp = header.parseString(message);
+    return string("OK ")+htvp+'\n';
   } 
   else if (command.compare("TEMP") == 0) {
     if (buffer.size() > 1) targetTemperature = stoi(message);
