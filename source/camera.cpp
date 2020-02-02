@@ -28,6 +28,7 @@ Camera::Camera(bool isParent){
   readModes = {"Full Vertical Binning", "Multi-Track", "Random-Track", "Single-Track", "Image"};
   acquisitionModes = {"Single Scan", "Accumulate", "Kinetics", "Fast Kinetics", "Run till abort"};
   shutterModes = {"Fully Auto", "Permanentely Open", "Permanentely Closed", "Open for FVB series", "Open for any series"};
+  shutterMStatus = {"AUTO", "OPEN", "CLOSED", "OPEN_FOR_FVB", "OPEN_FOR_SERIES"};
   readMode = 4;
   acquisitionMode = 0;
   exposureTime = 0.1;
@@ -177,6 +178,7 @@ std::string Camera::parseCommand(std::string message){
     image();
     return string("Image acquired\n");
   }
+
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
     try {
@@ -187,53 +189,76 @@ std::string Camera::parseCommand(std::string message){
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
   } 
+
   else if (command.compare("TEMP") == 0) {
     if (buffer.size() > 1) try {
-      targetTemperature = stoi(message);
+      targetTemperature = stoi(buffer.at(1));
+      log->print("Target temperature is set to %d", targetTemperature);
     } catch(...) {
-      log->print("ERROR Invalid argument ", buffer.at(1)," must be integer");
+      log->print("ERROR Invalid argument %s should be integer", buffer.at(1).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
-    log->print("Target temperature is set to %d", targetTemperature);
     setTemperature();
-    return string("OK TEMP=")+to_string(targetTemperature)+'\n';
+    return string("OK TARGET_TEMP=")+to_string(targetTemperature)+" TEMP_STATUS="+to_string(temperatureStatus)+'\n';
   }
+
   else if (command.compare("SHTR") == 0) {
     if (buffer.size() > 1) try {
-      shutterMode = stoi(message);
+      shutterMode = stoi(buffer.at(1));
+      setShutterMode();
     } catch(...) {
-      log->print("ERROR Invalid argument ", buffer.at(1)," must be integer");
+      log->print("ERROR Invalid argument %s must be integer", buffer.at(1).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
-    setShutterMode();
-    return string("OK SHTR=")+to_string(shutterMode)+'\n';
+    return string("OK SHTR=")+to_string(shutterMode) + \
+           string("SHTR_TXT=") + shutterMStatus.at(shutterMode)+'\n';
   }
+
+  // TODO: Сделать контроль запрещённых символов (*?/)
   else if (command.compare("PREF") == 0) {
-    if (buffer.size() > 1) prefix = buffer.at(1);
-    log->print("Prefix is set to %s", prefix.c_str());
+    if (buffer.size() > 1){
+      prefix = buffer.at(1);
+      if (prefix.compare("*") == 0) {
+        prefix = "";
+        log->print("Reset prefix");
+      } else
+        log->print("Prefix is set to %s", prefix.c_str());
+    }
     return string("OK PREF=")+prefix+'\n';
   }
+
   else if (command.compare("SUFF") == 0) {
-    if (buffer.size() > 1) postfix = buffer.at(1);
-    log->print("Suffix is set to %s", postfix.c_str());
+    if (buffer.size() > 1) {
+      postfix = buffer.at(1);
+      if (postfix.compare("*") == 0){
+        postfix = "";
+        log->print("Reset suffix");
+      } else
+        log->print("Suffix is set to %s", postfix.c_str());
+    }
     return string("OK SUFF=")+postfix+'\n';
   }
   else if (command.compare("DIR") == 0) {
     if (buffer.size() > 1){
       writeDirectory = buffer.at(1);
-      if (writeDirectory.back() != '/') writeDirectory += "/";
+      if (writeDirectory.compare("*")){
+        writeDirectory = "";
+        log->print("Target directory is reset");
+      } else {
+        if (writeDirectory.back() != '/') writeDirectory += "/";
+        log->print("Target directory is set to %s", writeDirectory.c_str());
+      }
     }
-    log->print("Target directory is set to %s", writeDirectory.c_str());
     return string("OK DIR=")+writeDirectory+'\n';
   }
   else if (command.compare("BIN") == 0) {
     if (buffer.size() > 2) try {
       bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
     } catch(...) {
-      log->print("ERROR Invalid argument", buffer.at(1),' ', buffer.at(2)," must be integers");
+      log->print("ERROR Invalid argument %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
-    return string("OK BIN=\'")+to_string(hBin)+' '+to_string(vBin)+"\'\n";
+    return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
   }
   else if (command.compare("SPEED") == 0) {
     if (buffer.size() > 1) speed(buffer.at(1));    
@@ -316,6 +341,7 @@ void Camera::setTemperature(){
   }
   CoolerON();
   SetTemperature(targetTemperature);
+  temperatureStatus = (GetTemperatureF(&temperature));
 }
 
 void Camera::setShutterMode(){

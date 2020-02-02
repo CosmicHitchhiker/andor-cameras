@@ -84,6 +84,7 @@ class Camera
     std::vector<std::string> readModes;
     std::vector<std::string> acquisitionModes;
     std::vector<std::string> shutterModes;
+    std::vector<std::string> shutterMStatus;
     std::vector<float> hss;
     std::vector<float> vss;
 
