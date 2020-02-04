@@ -25,24 +25,32 @@ class Camera
     virtual void init(Log* logFile, Config* ini);
     std::string getModel();
     std::string parseCommand(std::string message);
+    /** Return 
+      0 if exposure in progress
+      1 if exposure finished and image was saved
+    */
+    virtual bool imageReady();
+    virtual std::string saveImage();
     virtual void updateStatement();
     virtual void endWork();
+    int expStarted() { return expstarted;}
 
   protected:
     virtual void getShiftSpeedsInfo();
-    virtual void image();
+    virtual std::string startExposure();
     virtual void setTemperature();
     virtual void setShutterMode();
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
     void bin(int hbin, int vbin);
+    std::string textStatus(int);
     virtual void speed(std::string sp);
     virtual void vspeed(std::string sp);
 
   protected:
-    int status;
-
+    int status, expstarted;
+    time_t startTime;
     float temperature;
     int targetTemperature;
     int minT, maxT;
@@ -67,6 +75,7 @@ class Camera
     int acquisitionMode;
     int shutterMode;
     std::string model;
+    std::string fname;
     int isInternalShutter;
     int shutterCloseTime;
     int shutterOpenTime;
