@@ -37,6 +37,7 @@ Camera::Camera(bool isParent){
   hBin = 1;
   vBin = 1;
   dataType = 16;
+  expstarted = 0;
 
   prefix = "";
   postfix = "";
@@ -163,7 +164,6 @@ string Camera::getModel(){
   return model;
 }
 
-
 std::string Camera::parseCommand(std::string message){
   vector<string> buffer;
   boost::split(buffer, message, boost::is_any_of(" \t\n\0"));
@@ -171,11 +171,14 @@ std::string Camera::parseCommand(std::string message){
   message.erase(0, command.length()+1);
 
   if (command.compare("IMAG") == 0){
-    if (buffer.size() > 1) exposureTime = stof(buffer.at(1));
-    log->print("Exposure time is set to %g", exposureTime);
-    log->print("Getting image...");
-    image();
-    return string("Image acquired\n");
+    if (buffer.size() > 1) try {
+      exposureTime = stof(buffer.at(1));
+    } catch(...) {
+      log->print("ERROR Invalid argument ",buffer.at(1)," must be float");
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
+    log->print("Getting image with exposure time %g", exposureTime);
+    return startExposure();
   }
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
@@ -252,39 +255,95 @@ std::string Camera::parseCommand(std::string message){
 }
 
 
-void Camera::image(){
+std::string Camera::startExposure(){
   SetImage(hBin,vBin,crop.at(0),crop.at(1),crop.at(2),crop.at(3));
   SetExposureTime(exposureTime);
-  string name = fileName();
+  fname = fileName();
 
   float exposure, accumulate, kinetic;
   GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
   log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
   log->print("Starting acquisition");
-  StartAcquisition();
+  status = StartAcquisition();
+  time(&startTime);
 
-  //Loop until acquisition finished
-  GetStatus(&status);
-  while(status == DRV_ACQUIRING){
+  if (status == DRV_SUCCESS) {
+    expstarted = 1;
     GetStatus(&status);
-    sleep(1);
+    return std::string("OK FILE=") + fname + " EXPTIME="+to_string(exposure)+" STATUS="+textStatus(status)+'\n';
+  } else {
+    return std::string("ERROR STATUS=")+textStatus(status)+'\n';
   }
+}
+
+bool Camera::imageReady() { 
+  if (!expstarted) return false;
+  GetStatus(&status);
+  return status!=DRV_ACQUIRING;
+}
+
+std::string Camera::textStatus(int status) {
+  switch (status) {
+    // All:
+    case DRV_SUCCESS: return "SUCCESS";
+    // GetStatus:
+    case DRV_IDLE : return "IDLE";
+    case DRV_ACQUIRING : return "ACQUIRING";
+    case DRV_TEMPCYCLE : return "TEMPCYCLE";
+    case DRV_ACCUM_TIME_NOT_MET : return "ACCUM_TIME_NOT_MET";
+    case DRV_KINETIC_TIME_NOT_MET: return "KINETIC_TIME_NOT_MET";
+    case DRV_ERROR_ACK : return "ERROR_ACK";
+    case DRV_ACQ_BUFFER: return "ACQ_BUFFER";
+    case DRV_SPOOLERROR: return "SPOOLERROR";
+    // StartAcquisition:
+    case DRV_NOT_INITIALIZED: return "NOT_INITIALIZED";
+    case DRV_VXDNOTINSTALLED: return "VXDNOTINSTALLED";
+    case DRV_INIERROR: return "INIERROR";
+    case DRV_ACQUISITION_ERRORS: return "ACQUISITION_ERRORS";
+    case DRV_ERROR_PAGELOCK: return "ERROR_PAGELOCK";
+    case DRV_INVALID_FILTER : return "INVALID_FILTER";
+    case DRV_BINNING_ERROR : return "BINNING_ERROR";
+    //SaveAsFits:
+    case DRV_P1INVALID: return "P1INVALID";
+    case DRV_P2INVALID: return "P2INVALID";
+    case DRV_NOT_SUPPORTED: return "NOT_SUPPORTED";
+    // GetTemperature:
+    case DRV_TEMP_STABILIZED: return "TEMP_STABILIZED";
+    case DRV_TEMP_NOT_REACHED: return "TEMP_NOT_REACHED";
+    case DRV_TEMP_NOT_STABILIZED: return "TEMP_NOT_STABILIZED";
+    case DRV_TEMP_OFF : return "TEMP_OFF";
+    case DRV_TEMP_DRIFT : return "TEMP_DRIFT";
+    default: return "UNKNOWN_STATUS_"+to_string(status);
+  }
+}
+
+std::string Camera::saveImage() {
+  //Loop until acquisition finished
+  if (!expstarted) return std::string("ERROR STATUS=EXPOSURE_NOT_STARTED\n");
+  GetStatus(&status);
+  if (status == DRV_ACQUIRING) return std::string("ERROR STATUS=EXPOSURE_NOT_FINISHED\n");
   if (status != DRV_IDLE){
-    log->print("Error while acqiring data");
-    exit(1);
+    log->print("Error while acquiring data");    
+    return std::string("ERROR STATUS=")+textStatus(status)+'\n';
   }
-  log->print("Image is acquired");
+  expstarted = 0;
+  log->print("Saving acquired image %s", fname.c_str());
 
-  log->print("Saving file %s", name.c_str());
-
-  status = SaveAsFITS((char *)name.c_str(), 0);   // Save as fits with ANDOR metadata
+  status = SaveAsFITS((char *)fname.c_str(), 0);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
     log->print("Error while saving fits");
+    std::string backup = "BACKUP.fits";
+    if (SaveAsFITS((char *)backup.c_str(), 0)==DRV_SUCCESS) {
+      log->print("ATTENTION! Backup file ",backup.c_str()," is (over)written!");
+      return std::string("ERROR FILE=")+backup+" STATUS="+textStatus(status)+'\n';
+    }
+    return std::string("ERROR STATUS=")+textStatus(status)+'\n';
 //    exit(1);
   }
   log->print("Draft fits is saved.");
-  header.update(name);  // Write additional header keys
+  header.update(fname);  // Write additional header keys
   log->print("Result fits is saved.");
+  return std::string("OK STATUS=IDLE\n");
 }
 
 

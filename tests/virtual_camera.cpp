@@ -94,35 +94,6 @@ void VirtualCamera::getShiftSpeedsInfo(){
   }
 }
 
-void VirtualCamera::image(){
-  string name = fileName();
-
-  float exposure, accumulate, kinetic;
-  exposure = exposureTime;
-  accumulate = exposureTime + height*width/hss.at(hssNo) + height*width*vss.at(vssNo)/1000.;
-  kinetic = accumulate;
-  log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
-  log->print("Starting acquisition");
-
-  fitsfile *infptr, *outfptr;   /* FITS file pointers defined in fitsio.h */
-  int fstatus = 0;       /* status must always be initialized = 0  */
-  fits_open_file(&infptr, "sample.fits", READONLY, &fstatus);
-  
-  sleep(exposureTime);
-  log->print("Image is acquired");
-
-  log->print("Saving file %s", name.c_str());
-
-  fits_create_file(&outfptr, (char *)name.c_str(), &fstatus);
-  fits_copy_file(infptr, outfptr, 1, 1, 1, &fstatus);
-  fits_close_file(outfptr,  &fstatus);
-  fits_close_file(infptr, &fstatus);
-
-  log->print("Draft fits is saved.");
-  header.update(name);  // Write additional header keys
-  log->print("Result fits is saved.");
-}
-
 
 void VirtualCamera::setTemperature(){
   if (targetTemperature < minT) {
@@ -205,3 +176,87 @@ void VirtualCamera::endWork(){
     sleep(10);
   }
 }
+
+std::string VirtualCamera::startExposure(){
+  fname = fileName();
+
+  float exposure, accumulate, kinetic;
+  exposure = exposureTime;
+  accumulate = exposureTime + height*width/hss.at(hssNo) + height*width*vss.at(vssNo)/1000.;
+  kinetic = accumulate;
+  log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
+  log->print("Starting acquisition");
+
+  time(&startTime);
+  status = DRV_SUCCESS;
+
+  if (status == DRV_SUCCESS) {
+    expstarted = 1;
+    return std::string("OK FILE=") + fname + " EXPTIME="+to_string(exposure)+" STATUS="+textStatus(status)+'\n';
+  } else {
+    return std::string("ERROR STATUS=")+textStatus(status)+'\n';
+  }
+}
+
+
+bool VirtualCamera::imageReady() { 
+  if (!expstarted) return false;
+  int timeleft = 0;
+  time_t currTime;
+  time(&currTime);
+  timeleft = exposureTime - difftime(currTime, startTime);
+  if (timeleft<0) timeleft = 0;
+
+  if (timeleft != 0) status = DRV_ACQUIRING;
+  else status = DRV_IDLE;
+
+  return status!=DRV_ACQUIRING;
+}
+
+
+std::string VirtualCamera::saveImage() {
+  //Loop until acquisition finished
+  if (!expstarted) return std::string("ERROR STATUS=EXPOSURE_NOT_STARTED\n");
+  this->imageReady();
+  if (status == DRV_ACQUIRING) return std::string("ERROR STATUS=EXPOSURE_NOT_FINISHED\n");
+  if (status != DRV_IDLE){
+    log->print("Error while acquiring data");    
+    return std::string("ERROR STATUS=")+textStatus(status)+'\n';
+  }
+  expstarted = 0;
+  log->print("Saving acquired image %s", fname.c_str());
+
+  fitsfile *infptr, *outfptr;   /* FITS file pointers defined in fitsio.h */
+  int fstatus = 0;       /* status must always be initialized = 0  */
+  fits_open_file(&infptr, "sample.fits", READONLY, &fstatus);
+
+  fits_create_file(&outfptr, (char *)fname.c_str(), &fstatus);
+  fits_copy_file(infptr, outfptr, 1, 1, 1, &fstatus);
+  fits_close_file(outfptr,  &fstatus);
+  fits_close_file(infptr, &fstatus);
+
+  log->print("Draft fits is saved.");
+  header.update(fname);  // Write additional header keys
+  log->print("Result fits is saved.");
+  return std::string("OK STATUS=IDLE\n");
+}
+
+// void VirtualCamera::image(){
+//   fitsfile *infptr, *outfptr;   /* FITS file pointers defined in fitsio.h */
+//   int fstatus = 0;       /* status must always be initialized = 0  */
+//   fits_open_file(&infptr, "sample.fits", READONLY, &fstatus);
+  
+//   sleep(exposureTime);
+//   log->print("Image is acquired");
+
+//   log->print("Saving file %s", name.c_str());
+
+//   fits_create_file(&outfptr, (char *)name.c_str(), &fstatus);
+//   fits_copy_file(infptr, outfptr, 1, 1, 1, &fstatus);
+//   fits_close_file(outfptr,  &fstatus);
+//   fits_close_file(infptr, &fstatus);
+
+//   log->print("Draft fits is saved.");
+//   header.update(name);  // Write additional header keys
+//   log->print("Result fits is saved.");
+// }

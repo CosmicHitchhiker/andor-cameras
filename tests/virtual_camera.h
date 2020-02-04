@@ -17,11 +17,14 @@ class VirtualCamera : public Camera
 
   protected:
     void getShiftSpeedsInfo();
+    std::string startExposure();
     void image();
     void setTemperature();
     void setShutterMode();
     void speed(std::string sp);
     void vspeed(std::string sp);
+    bool imageReady();
+    std::string saveImage();
 };
 
 #endif // VIRTUAL_CAMERA_H
