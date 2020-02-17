@@ -21,13 +21,13 @@ class Socket
 	~Socket();
 	bool getMessage(std::string* messageToWrite);
 	void sendMessage(char* message);
-	void answer(const char* message);
+	int answer(const char* message);
 	void turnOff();
 	static void myError(int);
 	int getMaxLen();
 	int getDescriptor();
 	bool acceptConnection();
-	bool checkClient();
+	bool checkClient(bool disconnect = false);
 
   private:
   	int portNo;	// Номер порта
@@ -37,7 +37,7 @@ class Socket
 	Log* log;
 	const int MESSAGE_LEN = 1024;
 	// Если в течение 3 минут не будет сообщения - считаем, что клиент отсоеденился
-	const double connectionTimeout = 3*60; 
+	const double connectionTimeout = 60; 
 	time_t timeLastConnection;
 };
 

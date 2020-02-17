@@ -14,3 +14,4 @@
 #include "camera.h"
 
 #include <libconfig.h++>
+#include <signal.h>

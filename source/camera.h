@@ -4,6 +4,7 @@
 #include <boost/algorithm/string.hpp>
 #include <ctime>
 #include <numeric>
+#include <algorithm>
 
 #include "atmcdLXd.h"
 #include <libconfig.h++>
