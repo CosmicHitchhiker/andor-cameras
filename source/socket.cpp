@@ -102,20 +102,22 @@ bool Socket::acceptConnection(){
 }
 
 
-void Socket::answer(const char* message) {
+int Socket::answer(const char* message) {
   if (msg_sock >= 0) {
-    send(msg_sock, message, strlen(message), 0);
+    if (send(msg_sock, message, strlen(message), 0)<0) return 0;
     log->print("Answer: %s", message);
   } else {
     log->print("CAN'T answer: %s", message);
+    return 0;
   }
+  return 1;
 }
 
-bool Socket::checkClient(){
+bool Socket::checkClient(bool disconnect){
   time_t currTime;
   time(&currTime);
   bool res = (difftime(currTime, timeLastConnection) < connectionTimeout);
-  if (! res){
+  if (! res || disconnect){
     if (msg_sock >= 0 ) {     // Закрываем предыдущее общение
       log->print("Close previous connection");
       close(msg_sock);
@@ -123,7 +125,7 @@ bool Socket::checkClient(){
     }
   }
   // cout << res << endl;
-  return res;
+  return res && !disconnect;
 }
 
 void Socket::sendMessage(char* message) {
@@ -145,3 +147,4 @@ int Socket::getMaxLen(){
 int Socket::getDescriptor(){
   return listener;
 }
+

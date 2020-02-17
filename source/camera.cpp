@@ -181,7 +181,18 @@ std::string Camera::parseCommand(std::string message){
     log->print("Getting image with exposure time %g", exposureTime);
     return startExposure();
   }
-
+  else if (command.compare("ABORT") == 0) {
+    if (status==DRV_ACQUIRING) {
+      log->print("Aborting exposure");
+      AbortAcquisition();
+      GetStatus(&status);
+      // AbortAcquisition does not retain accumulated signal, so there is no reason to readout (??):
+      expstarted = 0;
+      return string("OK STATUS=")+textStatus(status)+'\n';
+    } else {
+      return string("ERROR STATUS=")+textStatus(status)+'\n';
+    }
+  } 
   else if (command.compare("HEAD") == 0) {
     log->print("Editing header");
     try {
@@ -272,8 +283,26 @@ std::string Camera::parseCommand(std::string message){
     return string("OK VSPEED=")+to_string(vssNo)+" VSS="+to_string(vss.at(vssNo))+'\n';
   }
   else if (command.compare("GET") == 0) {
-    updateStatement();
-    return string("T =")+to_string(temperature)+"\n";
+    std::string reply = "OK";
+    if (std::find(buffer.begin(),buffer.end(),"STATUS")!=buffer.end()) {
+      GetStatus(&status);
+      reply += string(" STATUS=")+textStatus(status);
+    }
+    if (std::find(buffer.begin(),buffer.end(),"TCCD")!=buffer.end()) {
+      updateStatement();
+      reply += string(" TCCD=")+to_string(temperature);
+    }
+    if (std::find(buffer.begin(),buffer.end(),"TIME")!=buffer.end()) {
+      int timeleft = 0;
+      if (expstarted) {
+        time_t currTime;
+        time(&currTime);
+        timeleft = exposureTime - difftime(currTime, startTime);
+        if (timeleft<0) timeleft = 0;
+      }
+      reply += string(" TIME=")+to_string(timeleft);
+    }
+    return reply+'\n';
   }
   else if (command.compare("EXIT") == 0) {
     return string("OK STATUS=EXIT_PROCEDURE_STARTED\n");
