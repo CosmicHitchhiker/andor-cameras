@@ -38,7 +38,7 @@ Camera::Camera(bool isParent){
   hBin = 1;
   vBin = 1;
   dataType = 16;
-  expstarted = 0;
+  expstarted = false;
 
   prefix = "";
   postfix = "";
@@ -298,7 +298,7 @@ std::string Camera::startExposure(){
   time(&startTime);
 
   if (status == DRV_SUCCESS) {
-    expstarted = 1;
+    expstarted = true;
     GetStatus(&status);
     return std::string("OK FILE=") + fname + " EXPTIME="+to_string(exposure)+" STATUS="+textStatus(status)+'\n';
   } else {
@@ -356,7 +356,7 @@ std::string Camera::saveImage() {
     log->print("Error while acquiring data");    
     return std::string("ERROR STATUS=")+textStatus(status)+'\n';
   }
-  expstarted = 0;
+  expstarted = false;
   log->print("Saving acquired image %s", fname.c_str());
 
   status = SaveAsFITS((char *)fname.c_str(), 0);   // Save as fits with ANDOR metadata

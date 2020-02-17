@@ -191,7 +191,7 @@ std::string VirtualCamera::startExposure(){
   status = DRV_SUCCESS;
 
   if (status == DRV_SUCCESS) {
-    expstarted = 1;
+    expstarted = true;
     return std::string("OK FILE=") + fname + " EXPTIME="+to_string(exposure)+" STATUS="+textStatus(status)+'\n';
   } else {
     return std::string("ERROR STATUS=")+textStatus(status)+'\n';
@@ -223,7 +223,7 @@ std::string VirtualCamera::saveImage() {
     log->print("Error while acquiring data");    
     return std::string("ERROR STATUS=")+textStatus(status)+'\n';
   }
-  expstarted = 0;
+  expstarted = false;
   log->print("Saving acquired image %s", fname.c_str());
 
   fitsfile *infptr, *outfptr;   /* FITS file pointers defined in fitsio.h */

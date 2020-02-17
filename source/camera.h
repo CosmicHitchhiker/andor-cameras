@@ -49,7 +49,8 @@ class Camera
     virtual void vspeed(std::string sp);
 
   protected:
-    int status, expstarted;
+    int status;
+    bool expstarted;
     time_t startTime;
     float temperature;
     int targetTemperature;
