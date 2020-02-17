@@ -4,6 +4,8 @@ using namespace std;
 
 Socket::Socket(int port_number, Log* logFile, int mode) { // mode == 0 - сервер, mode == 1 - клиент
   signal(SIGSEGV, Socket::myError);   // Вывод ошибки в случае переполнения стека
+  //https://www.linuxquestions.org/questions/programming-9/how-to-handle-a-broken-pipe-exception-sigpipe-in-fifo-pipe-866132/            }
+  signal(SIGPIPE, Socket::handler);
   log = logFile;
   log->print("Socket initialization...");
   listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -31,6 +33,7 @@ Socket::Socket(int port_number, Log* logFile, int mode) { // mode == 0 - сер�
     log->print("TCP server is activated");
     msg_sock = -1;
     time(&timeLastConnection);
+    // g_sig_pipe_caught = false;
   } else if (mode == 1) {
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if(connect(listener, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -38,6 +41,7 @@ Socket::Socket(int port_number, Log* logFile, int mode) { // mode == 0 - сер�
       exit(2);
     }
     log->print("TCP client is activated");
+    // g_sig_pipe_caught = false;
   }
 }
 
@@ -102,30 +106,29 @@ bool Socket::acceptConnection(){
 }
 
 
-int Socket::answer(const char* message) {
+bool Socket::answer(const char* message) {
   if (msg_sock >= 0) {
-    if (send(msg_sock, message, strlen(message), 0)<0) return 0;
+    if (send(msg_sock, message, strlen(message), 0)<0) return false;
     log->print("Answer: %s", message);
   } else {
     log->print("CAN'T answer: %s", message);
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
-bool Socket::checkClient(bool disconnect){
+bool Socket::isClientConnected(){
   time_t currTime;
   time(&currTime);
-  bool res = (difftime(currTime, timeLastConnection) < connectionTimeout);
-  if (! res || disconnect){
+  bool lostConnection = ((difftime(currTime, timeLastConnection) > connectionTimeout) || Socket::g_sig_pipe_caught);
+  if (lostConnection){
     if (msg_sock >= 0 ) {     // Закрываем предыдущее общение
       log->print("Close previous connection");
       close(msg_sock);
       msg_sock = -1;
     }
   }
-  // cout << res << endl;
-  return res && !disconnect;
+  return !lostConnection;
 }
 
 void Socket::sendMessage(char* message) {
@@ -146,5 +149,10 @@ int Socket::getMaxLen(){
 
 int Socket::getDescriptor(){
   return listener;
+}
+
+void Socket::handler(int){
+  g_sig_pipe_caught = true;
+  // log->print("SIGPIPE is caught");
 }
 

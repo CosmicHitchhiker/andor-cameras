@@ -28,13 +28,13 @@ class Camera
     std::string parseCommand(std::string message);
     /** Return 
       0 if exposure in progress
-      1 if exposure finished and image was saved
+      1 if exposure finished
     */
     virtual bool imageReady();
     virtual std::string saveImage();
     virtual void updateStatement();
     virtual void endWork();
-    int expStarted() { return expstarted;}
+    bool expStarted() { return expstarted;}
 
   protected:
     virtual void getShiftSpeedsInfo();

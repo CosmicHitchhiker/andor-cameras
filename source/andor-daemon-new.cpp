@@ -8,11 +8,8 @@ using namespace libconfig;
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
 
-bool g_sig_pipe_caught = false;
-void handler(int s) {
-//  std::cerr << "Caught SIGPIPE" << std::endl;
-  g_sig_pipe_caught = true;
-}
+bool Socket::g_sig_pipe_caught = false;
+
 
 int main(int argc, char* argv[]) {
   return Daemon(argc, argv);
@@ -65,9 +62,6 @@ int Main(int argc, char* argv[]){
   ini.readFile(iniName.c_str());
   int port = ini.lookup("Port");
 
-//https://www.linuxquestions.org/questions/programming-9/how-to-handle-a-broken-pipe-exception-sigpipe-in-fifo-pipe-866132/            }
-  signal(SIGPIPE, handler);
-
   Socket sock(port, &log);
   camera.init(&log, &ini);
 
@@ -79,6 +73,7 @@ int Main(int argc, char* argv[]){
     sleep(timeSleep);
   }
   log.print("Client connected");
+
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
     while (!sock.getMessage(&clientMessage)){
@@ -86,11 +81,7 @@ int Main(int argc, char* argv[]){
         serverMessage = camera.saveImage();
         break;
       }
-      if ((g_sig_pipe_caught || !camera.expStarted()) && !sock.checkClient(g_sig_pipe_caught)){
-          if (g_sig_pipe_caught) {
-            log.print("SIGPIPE is caught");
-            g_sig_pipe_caught = false;
-          }
+      if (!camera.expStarted() && !sock.isClientConnected()){
           log.print("Client is disconnected");
           while (! sock.acceptConnection())
             sleep(timeSleep);
@@ -99,6 +90,7 @@ int Main(int argc, char* argv[]){
       sleep(timeSleep);
     }
     if (clientMessage!="") serverMessage = camera.parseCommand(clientMessage);
+    else serverMessage = "\n";
     camera.updateStatement();
     sock.answer(serverMessage.c_str());
   }

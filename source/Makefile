@@ -3,7 +3,7 @@
 TARG = ../
 TEST = ../tests/
 
-all: client andor-daemon andor-daemon-test
+all: andor-daemon andor-daemon-test
 
 client: client.o log.o socket.o
 	g++ -std=c++11 client.o log.o socket.o -o $(TARG)client

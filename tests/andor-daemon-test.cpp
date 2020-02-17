@@ -8,6 +8,8 @@ using namespace libconfig;
 int Daemon(int argc, char* argv[]);
 int Main(int argc, char* argv[]);
 
+bool Socket::g_sig_pipe_caught = false;
+
 
 int main(int argc, char* argv[]) {
   return Daemon(argc, argv);
@@ -75,7 +77,7 @@ int Main(int argc, char* argv[]){
   while (clientMessage.compare("EXIT")){
     clientMessage = "";
     while (! sock.getMessage(&clientMessage)){
-      if (! sock.checkClient()){
+      if (! sock.isClientConnected()){
         log.print("Client is disconnected");
         while (! sock.acceptConnection()){
           sleep(timeSleep);
