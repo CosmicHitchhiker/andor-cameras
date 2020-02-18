@@ -14,6 +14,8 @@ class VirtualCamera : public Camera
     void init(Log* logFile, Config* ini);
     void updateStatement();
     void endWork();
+    bool imageReady();
+    std::string saveImage();
 
   protected:
     void getShiftSpeedsInfo();
@@ -23,8 +25,6 @@ class VirtualCamera : public Camera
     void setShutterMode();
     void speed(std::string sp);
     void vspeed(std::string sp);
-    bool imageReady();
-    std::string saveImage();
 };
 
 #endif // VIRTUAL_CAMERA_H
