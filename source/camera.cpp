@@ -20,6 +20,7 @@ using namespace libconfig;
   - #hBin и #vBin = 1 (отсутствие бинирования)
   - #expstarted = false
   - #prefix, #postfix и #writeDirectory зануляются
+  - #dataType = 0 (unsigned 16)
 
   Также настраивает файл .info, в который будут записываться
   целевая температура, текущая температура, статус охлаждения
@@ -71,7 +72,7 @@ Camera::Camera(bool isParent){
   shutterCloseTime = 50;
   hBin = 1;
   vBin = 1;
-  //dataType = 16;
+  dataType = 0;
   expstarted = false;
 
   prefix = "";
@@ -572,7 +573,7 @@ std::string Camera::saveImage() {
   expstarted = false;
   log->print("Saving acquired image %s", fname.c_str());
 
-  status = SaveAsFITS((char *)fname.c_str(), 0);   // Save as fits with ANDOR metadata
+  status = SaveAsFITS((char *)fname.c_str(), dataType);   // Save as fits with ANDOR metadata
   if (status != DRV_SUCCESS){
     log->print("Error while saving fits");
     std::string backup = "BACKUP.fits";
@@ -639,6 +640,18 @@ void Camera::readIni(Config *ini){
     targetTemperature = int(ini->lookup("Temperature"));
   } catch(const SettingNotFoundException &nfex){
     targetTemperature = temperature;
+  }
+
+  try {
+    string datatype = ini->lookup("Type");
+    if (datatype.compare("uint16") == 0) dataType = 0;
+    else if (datatype.compare("uint32") == 0) dataType = 1;
+    else if (datatype.compare("int16") == 0) dataType = 2;
+    else if (datatype.compare("int32") == 0) dataType = 3;
+    else if (datatype.compare("float") == 0) dataType = 4;
+    else dataType = 0;
+  } catch(const SettingNotFoundException &nfex){
+    dataType = 0;
   }
 
   try {
