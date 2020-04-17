@@ -124,6 +124,7 @@ int Main(int argc, char* argv[]){
           while (! sock.acceptConnection())
             sleep(timeSleep);
           log.print("Connected");
+          Socket::g_sig_pipe_caught = false;
       }
       sleep(timeSleep);
     }

@@ -21,7 +21,7 @@ class Socket
 	~Socket();
 	bool getMessage(std::string* messageToWrite);
 	void sendMessage(char* message);
-	bool answer(const char* message);
+	bool answer(const char* message, bool verbose=true);
 	void turnOff();
 	static void myError(int);
 	int getMaxLen();
@@ -29,6 +29,7 @@ class Socket
 	bool acceptConnection();
 	bool isClientConnected();
 	static void handler(int);
+	static bool g_sig_pipe_caught;
 
   private:
   	int portNo;	// Номер порта
@@ -40,7 +41,6 @@ class Socket
 	// Если в течение минуты не будет сообщения - считаем, что клиент отсоеденился
 	const double connectionTimeout = 60; 
 	time_t timeLastConnection;
-	static bool g_sig_pipe_caught;
 };
 
 #endif // SOCKET_H
