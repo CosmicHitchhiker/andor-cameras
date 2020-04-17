@@ -455,11 +455,21 @@ std::string Camera::parseCommand(std::string message){
     }
   }
   else if (command.compare("SPEED") == 0) {
-    if (buffer.size() > 1) speed(buffer.at(1));    
+    if (buffer.size() > 1)  try {
+    	speed(buffer.at(1));
+    } catch(...) {
+      log->print("ERROR Invalid argument %s must be MIN, MAX or integer value less than %d", buffer.at(1).c_str(), hss.size());
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+     }   
     return string("OK SPEED=")+to_string(hssNo)+" HSS="+to_string(hss.at(hssNo))+'\n';
   }
   else if (command.compare("VSPEED") == 0) {
-    if (buffer.size() > 1) vspeed(buffer.at(1));
+    if (buffer.size() > 1) try {
+    	vspeed(buffer.at(1));
+    } catch(...) {
+      log->print("ERROR Invalid argument %s must be MIN, MAX or integer value less than %d", buffer.at(1).c_str(), vss.size());
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
     return string("OK VSPEED=")+to_string(vssNo)+" VSS="+to_string(vss.at(vssNo))+'\n';
   }
   else if (command.compare("GET") == 0) {
