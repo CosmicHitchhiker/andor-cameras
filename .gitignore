@@ -18,3 +18,7 @@ tests/TEST_ANDOR.info
 tests/andor-daemon-test
 
 tests/socket_test
+
+source/html/
+
+source/latex/

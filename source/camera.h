@@ -45,7 +45,7 @@ class Camera
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
-    void bin(int hbin, int vbin);
+    std::string bin(int hbin, int vbin);
     std::string textStatus(int);
     virtual void speed(std::string sp);
     virtual void vspeed(std::string sp);

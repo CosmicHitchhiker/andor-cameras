@@ -431,12 +431,11 @@ std::string Camera::parseCommand(std::string message){
 
   else if (command.compare("BIN") == 0) {
     if (buffer.size() > 2) try {
-      bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
+      return bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
     } catch(...) {
       log->print("ERROR Invalid arguments %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
-    return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
   }
   else if (command.compare("SPEED") == 0) {
     if (buffer.size() > 1) speed(buffer.at(1));    
@@ -750,8 +749,15 @@ void Camera::endWork(){
 
 
 /// Задаёт бинирование
-void Camera::bin(int hbin, int vbin) {
-  hBin = hbin;
-  vBin = vbin;
-  log->print("Set bin: horizontal = %d, vertical = %d", hBin, vBin);
+std::string Camera::bin(int hbin, int vbin) {
+  if ((!(hbin == 0) && !(hbin & (hbin - 1))) && (!(vbin == 0) && !(vbin & (vbin - 1))) \
+  	&& hbin <= width && vbin <= height){
+	  hBin = hbin;
+	  vBin = vbin;
+	  log->print("Set bin: horizontal = %d, vertical = %d", hBin, vBin);
+	  return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
+	} else {
+	  log->print("ERROR Incorrect bin values");
+	  return string("ERROR STATUS=INVALID_ARGUMENT\n");
+	}
 }
