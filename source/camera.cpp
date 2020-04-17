@@ -303,6 +303,14 @@ string Camera::getModel(){
   В случае некорректных значений аргументов - возвращает сообщение об ошибке.
   Если всё в порядке - возвращает значения установленного горизонтального и вертикального бинирования.
 
+  Команда __CROP__:
+  Задаёт обрезание кадра.
+  Допольнительные значения - границы кадра xmin, ymin, xmax, ymax.
+  Если все аргументы заданы - вызывает метод setCrop()
+  В случае некорректных значений аргументов - возвращает сообщение об ошибке.
+  Если всё в порядке - возвращает значения установленных границ кадра.
+
+
   Команда __SPEED__:
   Устанавливает скорость считывания (скорость горизонтального сдвига)
   Опциональный аргумент - какую скорость установить (MIN, MAX или номер)
@@ -435,6 +443,14 @@ std::string Camera::parseCommand(std::string message){
       return bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
     } catch(...) {
       log->print("ERROR Invalid arguments %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
+      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    }
+  }
+  else if (command.compare("CROP") == 0) {
+    if (buffer.size() > 4) try {
+      return setCrop(stoi(buffer.at(1)), stoi(buffer.at(2)), stoi(buffer.at(3)), stoi(buffer.at(4)));
+    } catch(...) {
+      log->print("ERROR Invalid arguments %s, %s, %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str(), buffer.at(3).c_str(), buffer.at(4).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
   }
@@ -771,6 +787,20 @@ std::string Camera::bin(int hbin, int vbin) {
 	  return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
 	} else {
 	  log->print("ERROR Incorrect bin values");
+	  return string("ERROR STATUS=INVALID_ARGUMENT\n");
+	}
+}
+
+
+/// Задаёт обрезание кадра
+std::string Camera::setCrop(int xmin, int xmax, int ymin, int ymax) {
+  if (1 <= xmin && xmin < xmax && xmax <= width && 1 <= ymin && ymin < ymax && ymax <= height){
+	crop = {xmin, xmax, ymin, ymax};
+	log->print("Set crop: [%d, %d, %d, %d]", crop.at(0), crop.at(1), crop.at(2), crop.at(3));
+	  return string("OK XMIN=")+to_string(crop.at(0))+" XMAX="+to_string(crop.at(1)) \
+	    +" YMIN="+to_string(crop.at(2))+" YMAX="+to_string(crop.at(3))+'\n';
+	} else {
+	  log->print("ERROR Incorrect crop values");
 	  return string("ERROR STATUS=INVALID_ARGUMENT\n");
 	}
 }
