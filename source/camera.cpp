@@ -3,6 +3,40 @@
 using namespace std;
 using namespace libconfig;
 
+
+///  Конструктор класса: задаёт начальные параметры, не зависящие от файла конфигурации.
+/**
+  __ВАЖНО:__ при создании класс ничего не знает про лог-файл, поэтому в конструкторе
+  непосредственные параметры реальной камеры __не меняются__
+
+  Заполняет переменные #readModes, #acquisitionModes, #shutterModes и #shutterMStatus.
+
+  Устанавливает следующие значения переменных по-умолчанию:
+  - #readMode = 4 (Image)
+  - #acquisitionMode = 0 (Single Scan)
+  - #exposureTime = 0.1 секунда
+  - #shutterMode = 0 (Fully Auto)
+  - #shutterOpenTime и #shutterCloseTime по 50мс каждый
+  - #hBin и #vBin = 1 (отсутствие бинирования)
+  - #expstarted = false
+  - #prefix, #postfix и #writeDirectory зануляются
+
+  Также настраивает файл .info, в который будут записываться
+  целевая температура, текущая температура, статус охлаждения
+  и режим затвора.
+
+  В том случае, если работа ведётся с реальной камерой (`isParent == True`),
+  то дополнительно выполняются следующие действия:
+  - Производится инициализация камеры методом andorInit()
+  - В переменную #model записывается название модели подключённой камеры
+  - Создаётся файл для записи текущего состояния камеры
+  - Проверяется наличие внутреннего затвора
+  - Определяются ширина и высота камеры (с записью в #width и #height)
+  - #crop устанавливается на весь размер камеры
+  - Получаются возможные скорости считывания и #hssNo, #vssNo присуждаются значения минимальных
+  - Включается охладитель и получается возможный диапазон температур (#minT, #maxT)
+  - Целевой температурой охлаждения назначается текущая температура (охлаждения не происходит)
+*/
 Camera::Camera(bool isParent){
   if (isParent) {
     andorInit();
@@ -37,7 +71,7 @@ Camera::Camera(bool isParent){
   shutterCloseTime = 50;
   hBin = 1;
   vBin = 1;
-  dataType = 16;
+  //dataType = 16;
   expstarted = false;
 
   prefix = "";
@@ -59,6 +93,21 @@ Camera::Camera(bool isParent){
 }
 
 
+/// Предварительная настройка камеры в соответствии с файлом инициализации.
+/**
+  Этот метод обо всех своих действиях сообщает в лог-файл!
+
+  Производится настройка камеры в соответствии со значениями по-умолчанию:
+  режим считывания, режим накопления, режим затвора, скорости считывания.
+
+  Производится настройка камеры командой readIni() в соответствии с .ini файлом.
+
+  Обновляется текущее состояние камеры (updateStatement())
+
+  @param logFile указатель на лог-файл (класс Log)
+  @param ini указатель на файл с предварительными настройками
+  (класс __Config__ библиотеки _libconfig_)
+*/
 void Camera::init(Log* logFile, Config* ini){
   log = logFile;
 
@@ -94,12 +143,22 @@ void Camera::init(Log* logFile, Config* ini){
   SetVSSpeed(vssNo);
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
+  // Чтение и установка предварительных настроек
   readIni(ini);
+  // Установка целевой температуры, указанной в предварительных настройках
   setTemperature();
+  // Запись текущего состояния в файл
   updateStatement();
 }
 
 
+/// Инициализация камеры библиотекой AndorSDK
+/**
+  Метод получает общее количество камер Андор, поключённых к компьютеру,
+  затем поочереди пытается к ним подключиться.
+  После того, как к какой-то камере удалось подключиться - она инициализируется.
+  Если ни к одной камере подключиться не удалось - веполнение __всей__ программы прерывается.
+*/
 void Camera::andorInit(){
   unsigned long error;
   int NumberOfCameras, CameraHandle, i;
@@ -121,6 +180,11 @@ void Camera::andorInit(){
 }
 
 
+/// Получение информации о возможных режимах считывания (скоростях сдвига)
+/**
+  Метод используя процедуры библиотеки AndorSDK заполняет переменные
+  #hss, #vss, #min_hss_No, #max_hss_No, #min_vss_No, #max_vss_No
+ */
 void Camera::getShiftSpeedsInfo(){
   /* Заполняет hss и vss, min_hss_No и min_vss_No */
   int NumberOfSpeeds;
@@ -161,10 +225,109 @@ void Camera::getShiftSpeedsInfo(){
 }
 
 
+/// Возвращает модель камеры (#model)
 string Camera::getModel(){
   return model;
 }
 
+
+/// Основная функция для взаимодействия с камерой
+/**
+  Метод получает на вход сообщение, которое затем обрабатывает как команду.
+
+  __ВАЖНО__: этот метод общий для реальной и виртуальной камер. Поэтому он
+  не должен содержать прямого обращения к камере, а лишь вызывать другие
+  методы этого класса.
+
+  Первая часть обработки - разделение сообщения на слова. Разделительными
+  символами могут быть пробел, табуляция и символы конца строки.
+
+  Первое слово строки считается командой. Дальнейшее поведение программы
+  зависит от того, какая это команда. В случе, если кроме самой команды
+  сообщение содержит какие-либо параметры, эти параметры проверяются на
+  соответствие типа, если тип некорректен, метод возвращает сообщение
+  об ошибке.
+
+  ####Возможное поведение метода.
+
+  Команда __IMAG__:
+  Запускает экспозицию.
+  Команда может содержать дополнительный параметр - время экспозиции в секундах.
+  В случае неверного типа параметра - возвращает сообщение ошибки.
+  При отсутствии этого параметра время экспозиции остаётся таким же, как ранее.
+  Метод возвращает результат выполнения startExposure()
+
+  Команда __ABORT__:
+  В случае, если идёт съёмка, прерывает её и возвращает сообщение со статусом.
+  Если съёмка не идёт - возвращает сообщение об ошибке со статусом.
+
+  Команда __HEAD__:
+  Передаёт всё сообщение, кроме самой команды, методу HeaderValues::parseString()
+  В случае ошибки (например, несоответствие типа значения и переданного значения)
+  возвращает сообщение об ошибке.
+  Если всё успешно - возращает результат выполнения HeaderValues::parseString()
+
+  Команда __TEMP__:
+  Устанавливает целевую температуру.
+  Может иметь дополнительный аргумент - целочисленное значение целевой температуры.
+  Если переданный аргумент не преобразуется в целочисленный - вернёт сообщение об ошибке.
+  В ином случае записывает в #targetTemperature переданное значение, вызывает метод setTemperature()
+  и возвращает сообщение со значением целевой температуры и статусом охлаждения.
+
+  Команда __SHTR__:
+  Устанавливает режим работы затвора.
+  Дополнительный аргумент - номер режима (см. AndorSDK)
+  В случае наличия аргумента вызывает setShutterMode()
+  Если аргумент некорректен - вернёт сообщение об ошибке.
+  В ином случае возвращает статус затвора.
+
+  Команда __PREF__:
+  Устанавливает префикс в именах сохраняемых в дальнейшем fits-файлов (#prefix)
+  Дополнительный аргумент - значение префикса.
+  __КОМАНДА НЕ ПРОВЕРЯЕТ ОТСУТСТВИЕ ЗАПРЕЩЁННЫХ СИМВОЛОВ__
+  Если значение префикса равно "*" - обнуляет префикс.
+  Возвращает текущее значение префикса.
+
+  Команда __SUFF__:
+  Работает так же, как __PREF__, но изменяет суффикс (#postfix)
+
+  Команда __DIR__:
+  Работает так же как __PREF__, но изменяет папку сохранения (#writeDirectory)
+  Если в конце аргумента не стоит слэш - добавляет его.
+
+  Команда __BIN__:
+  Задаёт бинирование при съёмке.
+  Дополнительные аргументы - значения горизонтального и вертикального бинирования.
+  Если аргуметны заданы - вызывает метод bin()
+  В случае некорректных значений аргументов - возвращает сообщение об ошибке.
+  Если всё в порядке - возвращает значения установленного горизонтального и вертикального бинирования.
+
+  Команда __SPEED__:
+  Устанавливает скорость считывания (скорость горизонтального сдвига)
+  Опциональный аргумент - какую скорость установить (MIN, MAX или номер)
+  Вызывает метод speed()
+  Возвращает установленный номер и значение HSS.
+
+  Команда __VSPEED__:
+  Работает так же, как __SPEED__, но обрабатывает VSS (вызывая vspeed())
+
+  Команда __GET__:
+  Получение информации о камере.
+  Дополнительный аргумент - уточнение какую информацию получить.
+  STATUS - статус камеры
+  TCCD - температура матрицы
+  TIME - оставшееся время экспозиции (0, если экспозиция не идёт)
+  Возвращает соответствующий запросу параметр.
+
+  Команда __EXIT__:
+  Возвращает информацию о том, что началась процедура выхода.
+
+  __Любая другая команда__:
+  Возвращает сообщение о некорректной команде.
+
+  @param message Строка, содержащая сообщение клиента.
+  @return Строка, результат выполнения методов класса Camera или сообщение об ошибке.
+*/
 std::string Camera::parseCommand(std::string message){
   vector<string> buffer;
   boost::split(buffer, message, boost::is_any_of(" \t\n\0"));
@@ -265,11 +428,12 @@ std::string Camera::parseCommand(std::string message){
     }
     return string("OK DIR=")+writeDirectory+'\n';
   }
+
   else if (command.compare("BIN") == 0) {
     if (buffer.size() > 2) try {
       bin(stoi(buffer.at(1)), stoi(buffer.at(2)));
     } catch(...) {
-      log->print("ERROR Invalid argument %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
+      log->print("ERROR Invalid arguments %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
     return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
@@ -314,6 +478,18 @@ std::string Camera::parseCommand(std::string message){
 }
 
 
+/// Настройка и запуск экспозиции
+/**
+  Задаются параметры кадра (#hBin, #vBinm #crop передаются SetImage() AndorSDK)
+  Время экспозиции устанавливается передачей #exposureTime в SetExposureTime() AndorSDK.
+  Генерируется имя файла функцией fileName()
+
+  В лог-файл передаются значения времён, полученные GetAquisitionTimings() AndorSDK.
+  Запускается съёмка StartAquisition() и время начала записывается в #startTime.
+  Если экспозиция началасть, #expstarted становится "true" и в #status записывается текущий статус.
+
+  @returns Возвращает сообщение с именем файла, который будет записан и статусом или сообщение с ошибкой.
+*/
 std::string Camera::startExposure(){
   SetImage(hBin,vBin,crop.at(0),crop.at(1),crop.at(2),crop.at(3));
   SetExposureTime(exposureTime);
@@ -335,14 +511,21 @@ std::string Camera::startExposure(){
   }
 }
 
+
+/// Возвращает информацию о том, есть ли несохранённый кадр в камере
+/**
+  Возвращает flase, если экспозиция ещё не была начата.
+  */
 bool Camera::imageReady() { 
   if (!expstarted) return false;
   GetStatus(&status);
   return status!=DRV_ACQUIRING;
 }
 
-std::string Camera::textStatus(int status) {
-  switch (status) {
+
+/// Переводит численное значение статуса в текстовое
+std::string Camera::textStatus(int status_) {
+  switch (status_) {
     // All:
     case DRV_SUCCESS: return "SUCCESS";
     // GetStatus:
@@ -376,6 +559,8 @@ std::string Camera::textStatus(int status) {
   }
 }
 
+
+/// Сохраняет последнее записанное изображение
 std::string Camera::saveImage() {
   //Loop until acquisition finished
   if (!expstarted) return std::string("ERROR STATUS=EXPOSURE_NOT_STARTED\n");
@@ -406,6 +591,7 @@ std::string Camera::saveImage() {
 }
 
 
+/// Формирует имя файла для сохранения
 std::string Camera::fileName(){
   time_t cur_time = time(NULL);
   struct tm *curr_time = gmtime(&cur_time);
@@ -418,6 +604,8 @@ std::string Camera::fileName(){
   return result;
 }
 
+
+/// Устанавливает целевую температуру детектора
 void Camera::setTemperature(){
   if (targetTemperature < minT) {
     targetTemperature = minT;
@@ -432,6 +620,8 @@ void Camera::setTemperature(){
   temperatureStatus = (GetTemperatureF(&temperature));
 }
 
+
+/// Устанавливает режим работы затвора
 void Camera::setShutterMode(){
   if (shutterMode > 4 || shutterMode < 0) shutterMode = 0;
   if (isInternalShutter){
@@ -443,6 +633,8 @@ void Camera::setShutterMode(){
   }
 }
 
+
+/// Считывает конфиг-файл и устанавливает заданные в нём значения переменных
 void Camera::readIni(Config *ini){
   try {
     targetTemperature = int(ini->lookup("Temperature"));
@@ -485,6 +677,7 @@ void Camera::readIni(Config *ini){
 }
 
 
+/// Обновляет информацию о текущем состоянии камеры
 void Camera::updateStatement(){
   log->print("Updating statement...");
   Setting &root = cfg.getRoot();
@@ -513,6 +706,8 @@ void Camera::updateStatement(){
   cfg.writeFile(configName.c_str());
 }
 
+
+/// Устанавливает скорость считывания
 void Camera::speed(string sp){
   if (sp.compare("MAX") == 0) hssNo = max_hss_No;
   else if (sp.compare("MIN") == 0) hssNo = min_hss_No;
@@ -524,6 +719,8 @@ void Camera::speed(string sp){
   log->print("Horizontal Shift Speed is set to %gMHz", hss.at(hssNo));
 }
 
+
+/// Устанавливает скорость вертикального сдвига
 void Camera::vspeed(string sp){
   if (sp.compare("MAX") == 0) vssNo = max_vss_No;
   else if (sp.compare("MIN") == 0) vssNo = min_vss_No;
@@ -535,6 +732,8 @@ void Camera::vspeed(string sp){
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 }
 
+
+/// Завершает работу камеры
 void Camera::endWork(){
   log->print("Command loop exit");
   targetTemperature = maxT;
@@ -550,6 +749,7 @@ void Camera::endWork(){
 }
 
 
+/// Задаёт бинирование
 void Camera::bin(int hbin, int vbin) {
   hBin = hbin;
   vBin = vbin;
