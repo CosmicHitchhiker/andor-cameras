@@ -427,7 +427,7 @@ std::string Camera::parseCommand(std::string message){
   else if (command.compare("DIR") == 0) {
     if (buffer.size() > 1){
       writeDirectory = buffer.at(1);
-      if (writeDirectory.compare("*")){
+      if (writeDirectory.compare("*") == 0){
         writeDirectory = "";
         log->print("Target directory is reset");
       } else {

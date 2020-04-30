@@ -89,6 +89,14 @@ int Main(int argc, char* argv[]){
   //   заголовка фитс-файла, параметры имён сохраняемых фалов (префикс,
   //   суффикс, папка для сохранения)
   camera.init(&log, &ini);
+  // Изменение имени процесса
+  string processName = string(argv[0])+" "+Model+" "+to_string(port);
+  size_t argv0_len = strlen(argv[0]);
+  size_t procname_len = strlen((char *)processName.c_str());
+  size_t max_procname_len = (argv0_len > procname_len) ? (procname_len) : (argv0_len);
+  strncpy(argv[0], (char *)processName.c_str(), max_procname_len);
+  memset(&argv[0][max_procname_len], '\0', argv0_len - max_procname_len);
+  //argv[0] = (char *)processName.c_str();
 
   // Переменная для хранения сообщения клиента
   string clientMessage = "";
