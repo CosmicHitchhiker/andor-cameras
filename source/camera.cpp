@@ -385,7 +385,7 @@ std::string Camera::parseCommand(std::string message){
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
     setTemperature();
-    return string("OK TARGET_TEMP=")+to_string(targetTemperature)+" TEMP_STATUS="+to_string(temperatureStatus)+'\n';
+    return string("OK TARGET_TEMP=")+to_string(targetTemperature)+" TEMP_STATUS="+textStatus(temperatureStatus)+'\n';
   }
 
   else if (command.compare("SHTR") == 0) {
