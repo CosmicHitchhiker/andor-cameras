@@ -100,7 +100,7 @@ int Main(int argc, char* argv[]){
   string serverMessage = "";
 
   // Задержка для уменьшения потребления процессорного времени
-  float timeSleep = 0.5;
+  int timeSleep = 1;
   // Ждём пока подключится клиент
   while (! sock.acceptConnection()){
     sleep(timeSleep);
