@@ -91,7 +91,7 @@ int Main(int argc, char* argv[]){
   camera.init(&log, &ini);
   // Изменение имени процесса
   string processName = string(argv[0])+" "+Model+" "+to_string(port);
-  argv[0] = processName.c_str();
+  argv[0] = (char *)processName.c_str();
 
 
   // Переменная для хранения сообщения клиента
