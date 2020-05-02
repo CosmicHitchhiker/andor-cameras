@@ -17,8 +17,12 @@ HeaderValues::~HeaderValues(){
 void HeaderValues::addKey(std::string key, char type, std::string value, std::string comment){
 	n+=1;
 	keys.push_back(key);
-	types.push_back(type);
-	values.push_back(value);
+	if (value.compare("nan") == 0) {
+		types.push_back(n);
+	} else {
+		types.push_back(type);
+		values.push_back(value);
+	}
 	comments.push_back(comment);
 }
 
@@ -109,6 +113,8 @@ void HeaderValues::update(std::string filename) {
 			fits_update_key(image, TSTRING, keys.at(i).c_str(), val, comments.at(i).c_str(), &status);
 		} else if (types.at(i) == 'x'){
 			fits_delete_key(image, keys.at(i).c_str(), &status);
+		} else if (types.at(i) == 'n'){
+			fits_update_key_null(image, keys.at(i).c_str(), comments.at(i).c_str(), &status);
 		}
 	}
 	fits_close_file(image, &status);
