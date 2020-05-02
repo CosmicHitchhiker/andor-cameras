@@ -130,7 +130,7 @@ int Main(int argc, char* argv[]){
           log.print("Connected");
           Socket::g_sig_pipe_caught = false;
       }
-      sleep(timeSleep);
+      // sleep(timeSleep);
     }
     // Ответ клиенту выдаёт парсер камеры
     // В случае saveImage программа сбда попадает без сообщения клиента
