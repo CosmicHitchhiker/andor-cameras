@@ -120,18 +120,9 @@ bool Socket::answer(const char* message, bool verbose) {
 bool Socket::isClientConnected(){
   time_t currTime;
   time(&currTime);
-  // bool lostConnection = ((difftime(currTime, timeLastConnection) > connectionTimeout) || Socket::g_sig_pipe_caught);
-  // if (lostConnection){
-  //   if (msg_sock >= 0 ) {     // Закрываем предыдущее общение
-  //     log->print("Close previous connection");
-  //     close(msg_sock);
-  //     msg_sock = -1;
-  //   }
-  // }
   if (difftime(currTime, timeLastConnection) > connectionTimeout)
   	this->answer("\a", false);
   return !g_sig_pipe_caught;
-  // return !lostConnection;
 }
 
 void Socket::sendMessage(char* message) {

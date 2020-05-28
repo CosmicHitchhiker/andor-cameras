@@ -122,7 +122,6 @@ int Main(int argc, char* argv[]){
         break;
       }
       // Если не идёт экспозиция, а клиент отключился - ждём нового подключения
-      // TODO: если изображение стало готово внутри этого цикла - сохранить
       if (!camera.expStarted() && !sock.isClientConnected()){
           log.print("Client is disconnected");
           while (! sock.acceptConnection())
