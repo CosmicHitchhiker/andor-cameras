@@ -39,7 +39,7 @@ class Socket
 	Log* log;
 	const int MESSAGE_LEN = 1024;
 	// Если в течение минуты не будет сообщения - считаем, что клиент отсоеденился
-	const double connectionTimeout = 60; 
+	const double connectionTimeout = 10; 
 	time_t timeLastConnection;
 };
 

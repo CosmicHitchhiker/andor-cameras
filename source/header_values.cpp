@@ -18,7 +18,8 @@ void HeaderValues::addKey(std::string key, char type, std::string value, std::st
 	n+=1;
 	keys.push_back(key);
 	if (value.compare("nan") == 0) {
-		types.push_back(n);
+		types.push_back('n');
+		values.push_back(value);
 	} else {
 		types.push_back(type);
 		values.push_back(value);
