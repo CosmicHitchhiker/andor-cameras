@@ -358,7 +358,24 @@ std::string Camera::parseCommand(std::string message){
 	      return string("ERROR STATUS=INVALID_ARGUMENT\n");
 	    }
 	    log->print("Soket port is set to %d", port);
-	    return string("OK PORT = ") + to_string(port);
+	    return string("OK PORT=") + to_string(port);
+  	}
+
+  	if (command.compare("TYPE") == 0){
+  		if (buffer.size() > 1) try {
+	    	string datatype = buffer.at(1);
+		    if (datatype.compare("uint16") == 0) dataType = 0;
+		    else if (datatype.compare("uint32") == 0) dataType = 1;
+		    else if (datatype.compare("int16") == 0) dataType = 2;
+		    else if (datatype.compare("int32") == 0) dataType = 3;
+		    else if (datatype.compare("float") == 0) dataType = 4;
+		    else throw -1;
+	  	} catch(...){
+	    	log->print("ERROR Invalid dataType (should be uint32, uint16, int32, int16 or float)");
+	    	return string("ERROR STATUS=INVALID_ARGUMENT\n");
+	  	}
+	  	log->print("FITS data type is set to %d", dataType);
+	    return string("OK TYPE=") + to_string(dataType);
   	}
   }
 
