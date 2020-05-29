@@ -20,7 +20,8 @@ VirtualCamera::VirtualCamera() : Camera(false){
   targetTemperature = int(temperature);
 }
 
-void VirtualCamera::init(Log* logFile, Config* ini){
+// void VirtualCamera::init(Log* logFile, Config* ini){
+int VirtualCamera::init(Log* logFile, string iniName){
   log = logFile;
 
   log->print("Camera %s is initialized.", model.c_str());
@@ -48,9 +49,11 @@ void VirtualCamera::init(Log* logFile, Config* ini){
 
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
-  readIni(ini);
+  readScript(iniName);
   setTemperature();
   updateStatement();
+
+  return(port);
 }
 
 void VirtualCamera::getShiftSpeedsInfo(){

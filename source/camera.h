@@ -23,7 +23,7 @@ class Camera
   public:
     Camera(bool isParent = true);
     ~Camera(){}
-    virtual void init(Log* logFile, Config* ini);
+    virtual int init(Log* logFile, std::string iniName);
     std::string getModel();
     std::string parseCommand(std::string message);
     /** Return 
@@ -45,6 +45,7 @@ class Camera
     void andorInit();
     std::string fileName();
     void readIni(Config *ini);
+    void readScript(std::string scriptName);
     std::string bin(int hbin, int vbin);
     std::string setCrop(int xmin, int xmax, int ymin, int ymax);
     std::string textStatus(int);
@@ -52,6 +53,10 @@ class Camera
     virtual void vspeed(std::string sp);
 
   protected:
+    /// Порт для сокета (не используется внутри)
+    int port;
+    /// Для запуска только_скриптовых комманд
+    bool isReadingScript;
   	/// Статус камеры (см. Andor SDK)
     int status;
     /// Началась ли экспозиция

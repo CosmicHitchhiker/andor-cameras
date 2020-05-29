@@ -11,7 +11,7 @@ class VirtualCamera : public Camera
   public:
     VirtualCamera();
     ~VirtualCamera(){}
-    void init(Log* logFile, Config* ini);
+    int init(Log* logFile, std::string iniName);
     void updateStatement();
     void endWork();
     bool imageReady();

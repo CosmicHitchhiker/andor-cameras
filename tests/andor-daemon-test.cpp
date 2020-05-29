@@ -78,17 +78,17 @@ int Main(int argc, char* argv[]){
   Log log(logName);
   Config ini;
 
-  ini.readFile(iniName.c_str());
+  // ini.readFile(iniName.c_str());
   // Номер ТСР порта. Должен быть записан в ini-файле
-  int port = ini.lookup("Port");
+  // int port = ini.lookup("Port");
 
-  // Запуск ТСР-сервера
-  Socket sock(port, &log);
   // Начальные настройки камеры: режим съёмки, экспозиция, режим затвора, 
   //   скорость считывания, целевая температура, предустановленные строки
   //   заголовка фитс-файла, параметры имён сохраняемых фалов (префикс,
   //   суффикс, папка для сохранения)
-  camera.init(&log, &ini);
+  int port = camera.init(&log, iniName);
+  // Запуск ТСР-сервера
+  Socket sock(port, &log);
   // Изменение имени процесса
   string processName = string(argv[0])+" "+Model+" "+to_string(port);
   size_t argv0_len = strlen(argv[0]);

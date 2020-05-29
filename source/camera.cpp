@@ -91,6 +91,8 @@ Camera::Camera(bool isParent){
   // root.add("Postfix", Setting::TypeString);
   // root.add("Dir", Setting::TypeString);
   // root.add("Acquisition", Setting::TypeString);
+  isReadingScript = false;
+  port = 1567;
 }
 
 
@@ -109,7 +111,8 @@ Camera::Camera(bool isParent){
   @param ini указатель на файл с предварительными настройками
   (класс __Config__ библиотеки _libconfig_)
 */
-void Camera::init(Log* logFile, Config* ini){
+// void Camera::init(Log* logFile, Config* ini){
+int Camera::init(Log* logFile, string iniName){
   log = logFile;
 
   log->print("Camera %s is initialized.", model.c_str());
@@ -145,11 +148,14 @@ void Camera::init(Log* logFile, Config* ini){
   log->print("Vertical Shift Speed is set to %gus", vss.at(vssNo));
 
   // Чтение и установка предварительных настроек
-  readIni(ini);
+  // readIni(ini);
+  readScript(iniName);
   // Установка целевой температуры, указанной в предварительных настройках
   setTemperature();
   // Запись текущего состояния в файл
   updateStatement();
+
+  return(port);
 }
 
 
@@ -342,6 +348,19 @@ std::string Camera::parseCommand(std::string message){
   boost::split(buffer, message, boost::is_any_of(" \t\n\0"));
   string command = buffer.at(0);
   message.erase(0, command.length()+1);
+
+  if (isReadingScript){
+  	if (command.compare("PORT") == 0){
+	  	if (buffer.size() > 1) try {
+	      port = stoi(buffer.at(1));
+	    } catch(...) {
+	      log->print("ERROR Invalid argument ",buffer.at(1)," must be int");
+	      return string("ERROR STATUS=INVALID_ARGUMENT\n");
+	    }
+	    log->print("Soket port is set to %d", port);
+	    return string("OK PORT = ") + to_string(port);
+  	}
+  }
 
   if (command.compare("IMAG") == 0){
     if (buffer.size() > 1) try {
@@ -711,7 +730,20 @@ void Camera::readIni(Config *ini){
     }
   } catch(const SettingNotFoundException &nfex) {
   }
+}
 
+void Camera::readScript(string scriptName){
+	ifstream scriptFile(scriptName);
+
+	if (!scriptFile) log->print("ERROR Can't open script");
+	else {
+		isReadingScript = true;
+		string currentCommand;
+		for (getline(scriptFile, currentCommand); !(scriptFile.eof()); getline(scriptFile, currentCommand)){
+			parseCommand(currentCommand);
+		}
+	}
+	isReadingScript = false;
 }
 
 

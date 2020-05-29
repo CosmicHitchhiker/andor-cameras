@@ -24,3 +24,5 @@ source/html/
 source/latex/
 
 source/Doxyfile
+
+tests/TEST_ANDOR_OLD.ini
