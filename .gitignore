@@ -13,6 +13,16 @@ client
 
 source/.info
 
-tests/TEST_ANDOR.info
 
+tests/TEST_ANDOR.info
 tests/andor-daemon-test
+
+tests/socket_test
+
+source/html/
+
+source/latex/
+
+source/Doxyfile
+
+tests/TEST_ANDOR_OLD.ini

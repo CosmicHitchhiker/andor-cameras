@@ -10,18 +10,21 @@ class VirtualCamera : public Camera
 {
   public:
     VirtualCamera();
-    ~VirtualCamera() {}
-    void init(Log* logFile, Config* ini);
+    ~VirtualCamera(){}
+    int init(Log* logFile, std::string iniName);
     void updateStatement();
     void endWork();
-    // void setTemperature(int T);
-    // float getTemperature();
+    bool imageReady();
+    std::string saveImage();
 
   protected:
     void getShiftSpeedsInfo();
+    std::string startExposure();
     void image();
     void setTemperature();
     void setShutterMode();
+    void speed(std::string sp);
+    void vspeed(std::string sp);
 };
 
 #endif // VIRTUAL_CAMERA_H

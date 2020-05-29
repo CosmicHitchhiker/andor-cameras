@@ -13,9 +13,10 @@ class HeaderValues
 	HeaderValues();
 	~HeaderValues();
 	void addKey(std::string key, char type = 's', std::string value = "", std::string comment = "");
-	void parseString(std::string str);
+	std::string parseString(std::string str);
 	void printAll();
 	void update(std::string filename);
+  void checkType(char type, std::string value);
 
   private:
   	int n; // Количество ключей для добавления

@@ -19,6 +19,8 @@ Log::Log(std::string fileName) {
 Log::~Log(){
 	time_t cur_time = time(NULL);
     file << format("\nLog ending %s\n", ctime(&cur_time));
+    file << "=======================================";
+    file << "=======================================\n";
 	file.close();
 }
 
@@ -32,8 +34,8 @@ void Log::print(const char* message, ...) {
 
 	time(&cur_time);
 	curr_time = localtime(&cur_time);
-	strftime(buffer,bufferSize,"%T %h %d ",curr_time);
-	file << buffer << ": ";
+	strftime(buffer,bufferSize,"%FT%T",curr_time);
+	file << buffer << " ";
 	delete []buffer;
 
 	va_start(arglist, message);
