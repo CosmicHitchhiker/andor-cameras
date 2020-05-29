@@ -388,6 +388,7 @@ std::string Camera::parseCommand(std::string message){
     log->print("Editing header");
     try {
       std::string htvp = header.parseString(message);
+      log->print(htvp.c_str());
       return string("OK ")+htvp+'\n';
     } catch(...) {
       log->print("ERROR Does value match type?");
