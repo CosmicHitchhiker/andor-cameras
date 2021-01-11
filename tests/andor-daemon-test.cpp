@@ -82,7 +82,7 @@ int Main(int argc, char* argv[]){
   // Номер ТСР порта. Должен быть записан в ini-файле
   // int port = ini.lookup("Port");
 
-  // Начальные настройки камеры: режим съёмки, экспозиция, режим затвора, 
+  // Начальные настройки камеры: режим съёмки, экспозиция, режим затвора,
   //   скорость считывания, целевая температура, предустановленные строки
   //   заголовка фитс-файла, параметры имён сохраняемых фалов (префикс,
   //   суффикс, папка для сохранения)
@@ -91,12 +91,7 @@ int Main(int argc, char* argv[]){
   Socket sock(port, &log);
   // Изменение имени процесса
   string processName = string(argv[0])+" "+Model+" "+to_string(port);
-  size_t argv0_len = strlen(argv[0]);
-  size_t procname_len = strlen((char *)processName.c_str());
-  size_t max_procname_len = (argv0_len > procname_len) ? (procname_len) : (argv0_len);
-  strncpy(argv[0], (char *)processName.c_str(), max_procname_len);
-  memset(&argv[0][max_procname_len], '\0', argv0_len - max_procname_len);
-  //argv[0] = (char *)processName.c_str();
+
 
   // Переменная для хранения сообщения клиента
   string clientMessage = "";
@@ -104,7 +99,7 @@ int Main(int argc, char* argv[]){
   string serverMessage = "";
 
   // Задержка для уменьшения потребления процессорного времени
-  float timeSleep = 0.5;
+  int timeSleep = 1;
   // Ждём пока подключится клиент
   while (! sock.acceptConnection()){
     sleep(timeSleep);
@@ -126,7 +121,6 @@ int Main(int argc, char* argv[]){
         break;
       }
       // Если не идёт экспозиция, а клиент отключился - ждём нового подключения
-      // TODO: если изображение стало готово внутри этого цикла - сохранить
       if (!camera.expStarted() && !sock.isClientConnected()){
           log.print("Client is disconnected");
           while (! sock.acceptConnection())
@@ -134,7 +128,7 @@ int Main(int argc, char* argv[]){
           log.print("Connected");
           Socket::g_sig_pipe_caught = false;
       }
-      sleep(timeSleep);
+      // sleep(timeSleep);
     }
     // Ответ клиенту выдаёт парсер камеры
     // В случае saveImage программа сбда попадает без сообщения клиента
