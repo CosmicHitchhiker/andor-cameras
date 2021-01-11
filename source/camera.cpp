@@ -171,6 +171,7 @@ void Camera::andorInit(){
   int NumberOfCameras, CameraHandle, i;
 
   GetAvailableCameras(&NumberOfCameras);
+  cerr << "Number of cameras: " << NumberOfCameras << '\n';
   for (i = 0; i < NumberOfCameras; i++){
     GetCameraHandle(i, &CameraHandle);
     SetCurrentCamera(CameraHandle);
@@ -179,7 +180,7 @@ void Camera::andorInit(){
   }
 
   if(i == NumberOfCameras){
-    cerr << "Can't find desired camera";
+    cerr << "Can't find desired camera\n";
     exit(1);
   }
 
@@ -434,7 +435,7 @@ std::string Camera::parseCommand(std::string message){
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
     }
     return string("OK SHTR=")+to_string(shutterMode) + \
-           string("SHTR_TXT=") + shutterMStatus.at(shutterMode)+'\n';
+           string(" SHTR_TXT=") + shutterMStatus.at(shutterMode)+'\n';
   }
 
   // TODO: Сделать контроль запрещённых символов (*?/)
@@ -481,6 +482,8 @@ std::string Camera::parseCommand(std::string message){
     } catch(...) {
       log->print("ERROR Invalid arguments %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    } else {
+      return string("OK HBIN=")+to_string(hBin)+" VBIN="+to_string(vBin)+'\n';
     }
   }
   else if (command.compare("CROP") == 0) {
@@ -489,6 +492,9 @@ std::string Camera::parseCommand(std::string message){
     } catch(...) {
       log->print("ERROR Invalid arguments %s, %s, %s and %s must be integers", buffer.at(1).c_str(), buffer.at(2).c_str(), buffer.at(3).c_str(), buffer.at(4).c_str());
       return string("ERROR STATUS=INVALID_ARGUMENT\n");
+    } else {
+      return string("OK XMIN=")+to_string(crop.at(0))+" XMAX="+to_string(crop.at(1)) \
+	    +" YMIN="+to_string(crop.at(2))+" YMAX="+to_string(crop.at(3))+'\n';
     }
   }
   else if (command.compare("SPEED") == 0) {
@@ -556,13 +562,13 @@ std::string Camera::parseCommand(std::string message){
 std::string Camera::startExposure(){
   SetImage(hBin,vBin,crop.at(0),crop.at(1),crop.at(2),crop.at(3));
   SetExposureTime(exposureTime);
-  fname = fileName();
 
   float exposure, accumulate, kinetic;
   GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
   log->print("Exposure time is %g, accumulate is %g, kinetic is %g", exposure, accumulate, kinetic);
   log->print("Starting acquisition");
   status = StartAcquisition();
+  fname = fileName();
   time(&startTime);
 
   if (status == DRV_SUCCESS) {
@@ -648,22 +654,25 @@ std::string Camera::saveImage() {
 //    exit(1);
   }
   log->print("Draft fits is saved.");
-  header.update(fname);  // Write additional header keys
+    header.update(fname);  // Write additional header keys
   log->print("Result fits is saved.");
   return std::string("OK STATUS=IDLE\n");
 }
 
 
-/// Формирует имя файла для сохранения
+/// Формирует имя файла для сохранения и строку заголовка с началом экспозиции
 std::string Camera::fileName(){
   time_t cur_time = time(NULL);
   struct tm *curr_time = gmtime(&cur_time);
   char tfmt[50];
   string img_time;
+  strftime(tfmt,50,"%FT%T",curr_time);
+  header.addKey("DATE-OBS", 's', tfmt, "Exposure start, UTC");
   strftime(tfmt,50,"%Y%m%d%H%M%S",curr_time);
   img_time = tfmt;
   string result = writeDirectory + prefix + img_time + postfix + ".fits";
   log->print("File name: %s", result.c_str());
+  
   return result;
 }
 
